@@ -83,20 +83,28 @@ class BrowserController:
             # 1. Open Login Modal on Landing Page
             self.logger.log("Attempting to open login modal...")
             
-            # The button might be hidden/hover-based. Force click might be needed.
             try:
+                # The menu is hidden behind #start button and revealed on hover (group-hover)
+                # We need to hover the container or the start button to "expand" the menu.
+                if self.page_app.is_visible('#start'):
+                    self.logger.log("Hovering main menu to expand...")
+                    self.page_app.hover('#start')
+                    time.sleep(1) # Wait for animation
+                
+                # Now try clicking the button
                 if self.page_app.is_visible('#btn-layanan-public'):
-                    self.page_app.hover('#btn-layanan-public')
-                    time.sleep(0.5)
                     self.page_app.click('#btn-layanan-public', force=True)
                 elif self.page_app.is_visible('#btn-layanan-login-mobile'):
-                    self.page_app.click('#btn-layanan-login-mobile')
+                    self.page_app.click('#btn-layanan-login-mobile', force=True)
                 else:
-                    # Fallback
                     self.logger.log("Attempting fallback click for Login menu...")
-                    self.page_app.click('text=Login')
+                    # Fallback: force click specific text or try clicking start on mobile
+                    self.page_app.click('#start', force=True) # Mobile toggle?
+                    time.sleep(1)
+                    self.page_app.click('text=Login', force=True)
+                    
             except Exception as e:
-                self.logger.log(f"⚠️ Initial click failed: {e}")
+                self.logger.log(f"⚠️ Initial click failed (might already be open?): {e}")
 
             # 2. Click 'Masuk' in Modal to redirect to SSO
             self.logger.log("Waiting for 'Masuk' button...")
@@ -104,7 +112,7 @@ class BrowserController:
                 self.page_app.wait_for_selector('#btn-login', state='visible', timeout=5000)
                 self.page_app.click('#btn-login')
             except Exception as e:
-                 self.logger.log(f"⚠️ Error clicking Masuk: {e}")
+                self.logger.log(f"⚠️ Error clicking Masuk: {e}")
 
             # 3. Wait for SSO Page Redirection
             self.logger.log("Waiting for SSO page...")
@@ -127,7 +135,7 @@ class BrowserController:
                 if self.page_app.is_visible('button[type="submit"]'):
                     self.page_app.click('button[type="submit"]')
                 elif self.page_app.is_visible('#kc-login'):
-                     self.page_app.click('#kc-login')
+                    self.page_app.click('#kc-login')
                 else:
                     self.page_app.press('input[name="password"]', 'Enter')
                 
@@ -193,24 +201,24 @@ class BrowserController:
         # Or just a long timeout allowing the user to do it. 
         
         try:
-             # Just waiting for a navigation that indicates success. 
-             # For MVP, let's give them 2 minutes or until they close it.
-             # Better: Check for a specific 'success' element if we knew it.
-             # For now, I'll loop check the URL.
-             
-             start_time = time.time()
-             initial_url = self.page_app.url
-             while time.time() - start_time < 120: # 2 mins
-                 if self.page_app.url != initial_url and 'login' not in self.page_app.url:
-                     self.logger.log(f"✅ Login appears successful! URL: {self.page_app.url}")
-                     return True
-                 time.sleep(1)
-             
-             self.logger.log("❌ 2FA/Login timeout.")
-             return False
+            # Just waiting for a navigation that indicates success. 
+            # For MVP, let's give them 2 minutes or until they close it.
+            # Better: Check for a specific 'success' element if we knew it.
+            # For now, I'll loop check the URL.
+            
+            start_time = time.time()
+            initial_url = self.page_app.url
+            while time.time() - start_time < 120: # 2 mins
+                if self.page_app.url != initial_url and 'login' not in self.page_app.url:
+                    self.logger.log(f"✅ Login appears successful! URL: {self.page_app.url}")
+                    return True
+                time.sleep(1)
+            
+            self.logger.log("❌ 2FA/Login timeout.")
+            return False
         except Exception as e:
-             self.logger.log(f"❌ Error during 2FA wait: {str(e)}")
-             return False
+            self.logger.log(f"❌ Error during 2FA wait: {str(e)}")
+            return False
 
     def get_doc_text(self) -> str:
         """Extracts text content from the Google Doc tab."""

@@ -133,14 +133,16 @@ class DailyReporterApp:
 
             # FUTURE STEPS (Calendar scanning, etc.)
             
-            self.logger.log("Phase 2 Complete. Browser will close in 5 seconds.")
-            import time
-            time.sleep(5)
+            self.logger.log("Phase 2 Complete.")
             
-            self.finish_process(browser)
-
+            # Keep browser open for debugging
+            self.logger.log("Browser will remain open for inspection.")
+            # self.finish_process(browser) # Don't close automatically for now
+            
         except Exception as e:
             self.logger.log(f"❌ CRITICAL ERROR: {str(e)}")
+            # Don't close on error
+            self.logger.log("Process paused due to error.")
             # In case of error we might want to keep browser open for debugging
             # but for now let's close to be safe or maybe leave it?
             # browser.close_browser() 
