@@ -48,12 +48,22 @@ class BrowserController:
         """Navigates the doc tab to the Google Doc URL."""
         if not self.page_doc:
             return
+            
         self.logger.log(f"Navigating to Google Doc...")
-        try:
-            self.page_doc.goto(url)
-            self.logger.log("✓ Google Doc loaded")
-        except Exception as e:
-            self.logger.log(f"❌ Error loading Google Doc: {str(e)}")
+        
+        # Retry loop for unstable connection
+        for attempt in range(3):
+            try:
+                self.logger.log(f"Loading Doc (Attempt {attempt+1}/3)...")
+                # Using a very long timeout (3 mins)
+                self.page_doc.goto(url, timeout=180000, wait_until='domcontentloaded')
+                self.logger.log("✓ Google Doc loaded (DOM Ready)")
+                return
+            except Exception as e:
+                self.logger.log(f"⚠️ Error loading Doc (Attempt {attempt+1}): {str(e)}")
+                time.sleep(5) # Wait before retry
+        
+        self.logger.log("❌ Failed to load Google Doc after 3 attempts")
 
     def login(self):
         """Handles the login flow on the web app tab."""
@@ -234,14 +244,45 @@ class BrowserController:
             # But Playwright's page.inner_text('body') usually captures the accessible text content
             
             # Let's wait a bit for load
-            time.sleep(2) 
+            # Google Docs content is dynamically loaded.
+            # We need to wait for the main editor container
+            
+            self.logger.log("Waiting for Doc to fully load...")
+            try:
+                 self.page_doc.wait_for_load_state('networkidle', timeout=120000)
+            except:
+                 self.logger.log("⚠️ Network idle timeout, proceeding...")
+            
+            # Wait for specific editor element usually present in Google Docs
+            try:
+                self.page_doc.wait_for_selector('.kix-appview-editor', timeout=60000)
+                self.logger.log("✓ Editor loaded")
+            except:
+                self.logger.log("⚠️ Editor selector invalid, waiting generic time...")
+                time.sleep(5)
+            
+            time.sleep(5) # Extra buffer for text rendering
             
             # Google docs is tricky. simple inner_text might get a lot of UI noise.
             # Best approach for MVP without API: Select All + Copy? No, clipboard access is blocked usually.
-            # Attempt to read 'body' text content.
+            # Attempt to read 'body' text content via evaluate which sometimes captures a11y text better
             
-            content = self.page_doc.locator('body').inner_text()
+            self.logger.log("Reading content...")
+            
+            # Helper to get text from all pages/sections
+            content = self.page_doc.evaluate("""() => {
+                return document.body.innerText;
+            }""")
+            
             self.logger.log(f"✓ Extracted {len(content)} chars")
+            
+            # If content is too short (just header), maybe wait more?
+            if len(content) < 200:
+                self.logger.log("⚠️ Content seems short. Waiting and retrying...")
+                time.sleep(5)
+                content = self.page_doc.evaluate("document.body.innerText")
+                self.logger.log(f"✓ Retry extracted {len(content)} chars")
+            
             return content
             
         except Exception as e:

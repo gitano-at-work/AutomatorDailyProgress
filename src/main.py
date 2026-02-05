@@ -116,6 +116,11 @@ class DailyReporterApp:
                 self.logger.log("❌ Failed to get document text or empty.")
                 # We continue or stop? Let's stop to be safe for now
             else:
+                # DUMP FOR ANALYSIS
+                with open("doc_dump.txt", "w", encoding="utf-8") as f:
+                    f.write(doc_text)
+                self.logger.log("ℹ️  Saved raw doc text to 'doc_dump.txt'")
+                
                 entries = parse_google_doc_text(doc_text)
                 self.logger.log(f"✓ Parsed {len(entries)} potential entries.")
                 
