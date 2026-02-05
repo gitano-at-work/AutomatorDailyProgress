@@ -1,0 +1,50 @@
+import tkinter as tk
+from datetime import datetime
+
+class Logger:
+    def __init__(self, text_widget: tk.Text):
+        self.text_widget = text_widget
+
+    def log(self, message: str):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        full_message = f"[{timestamp}] {message}\n"
+        
+        self.text_widget.configure(state='normal')
+        self.text_widget.insert(tk.END, full_message)
+        self.text_widget.see(tk.END)
+        self.text_widget.configure(state='disabled')
+        print(full_message.strip()) # Also print to console
+
+def normalize_date(date_str: str) -> str:
+    """
+    Convert various date formats to YYYY-MM-DD.
+    Input examples:
+        - "2 Februari 2026" (Indonesian)
+        - "2026-02-02" (ISO)
+    """
+    import re
+    # Indonesian month mapping
+    indo_months = {
+        'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
+        'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
+        'september': 9, 'oktober': 10, 'november': 11, 'desember': 12,
+        # Short forms just in case (though not in PRD)
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7, 
+        'agu': 8, 'sep': 9, 'okt': 10, 'nov': 11, 'des': 12
+    }
+    
+    text = date_str.lower().strip()
+    
+    # Try Indonesian format first: "2 Februari 2026"
+    match = re.match(r'(\d{1,2})\s+([a-z]+)\s+(\d{4})', text)
+    if match:
+        day, month_name, year = match.groups()
+        month = indo_months.get(month_name)
+        if month:
+            return f"{year}-{month:02d}-{int(day):02d}"
+    
+    # Try ISO format
+    if re.match(r'\d{4}-\d{2}-\d{2}', text):
+        return text
+        
+    return "" # Return empty if failed
