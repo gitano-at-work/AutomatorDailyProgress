@@ -100,6 +100,8 @@ class DailyReporterApp:
 
             # Navigate to Doc
             browser.navigate_to_doc(self.doc_url_var.get())
+            
+
 
             # Navigate to App and Login
             browser.login()
@@ -139,8 +141,6 @@ class DailyReporterApp:
             self.logger.log("Switching to Google Doc tab...")
             if browser.page_doc:
                 browser.page_doc.bring_to_front()
-                time.sleep(1) # Brief pause for focus
-            
             # 3. Capture Text
             doc_text = browser.get_doc_text()
             if not doc_text:
@@ -148,6 +148,11 @@ class DailyReporterApp:
                 # We stop here
                 self.finish_process(browser)
                 return
+
+            # DUMP FOR DEBUG
+            with open("doc_dump.txt", "w", encoding="utf-8") as f:
+                f.write(doc_text)
+            self.logger.log("ℹ️  Saved raw doc text to 'doc_dump.txt'")
 
             # 4. Parse Entries
             entries = parse_google_doc_text(doc_text)

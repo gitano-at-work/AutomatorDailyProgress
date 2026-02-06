@@ -35,8 +35,61 @@ class FormFiller:
         self.logger.log(f"Filling entry for {entry.get('date')}...")
         
         try:
-            # 1. Rencana Aksi - Skip (User instruction: Keep empty)
-            
+            # 1. Rencana Aksi
+            action_plan = entry.get('action_plan', '')
+            if action_plan:
+                self.logger.log(f"Selecting Rencana Aksi: '{action_plan}'...")
+                # Strategy: Click dropdown -> Wait for list -> Click item (Text or Index)
+                
+                # Dropdown trigger (Generic wrapper usually)
+                dropdown_container = "//div[contains(@class, 'form-group')][.//label[contains(text(), 'Rencana Aksi')]]"
+                
+                # Click to open
+                try:
+                    self.page.click(f"{dropdown_container}//div[contains(@class, 'multiselect')]", timeout=2000)
+                except:
+                    self.page.click(f"{dropdown_container}//input")
+                
+                # Wait for options visibility
+                self.page.wait_for_timeout(500) # Small buffer for animation
+
+                try:
+                    if action_plan.isdigit():
+                        # INDEX BASED SELECTION (User Convention: "1" -> First Option)
+                        idx = int(action_plan) - 1 # 0-based
+                        self.logger.log(f"  > Selecting Option #{action_plan} (Index {idx})...")
+                        
+                        # Find all options. Usually .multiselect__element or li
+                        # We use a broad logic: find the UL inside the container -> then LIs
+                        # Or generic global LIs if the library renders them at root (common in Vue)
+                        
+                        # Attempt 1: Look inside the container (if semantic)
+                        options = self.page.locator(f"{dropdown_container}//li")
+                        if options.count() == 0:
+                             # Attempt 2: Global multiselect open list (Vue-Multiselect style)
+                             options = self.page.locator(".multiselect__content-wrapper .multiselect__element")
+                        
+                        if options.count() > idx:
+                            options.nth(idx).click()
+                            self.logger.log("  > Selected by Index.")
+                        else:
+                            self.logger.log(f"  ⚠️ Index {idx} out of bounds (Found {options.count()} options).")
+                            
+                    else:
+                        # TEXT BASED SELECTION
+                        option_selector = f"li:has-text('{action_plan}')"
+                        if self.page.is_visible(option_selector):
+                            self.page.click(option_selector)
+                            self.logger.log("  > Selected by Text.")
+                        else:
+                            self.page.locator(f"span:text('{action_plan}')").first.click()
+                            self.logger.log("  > Selected via span match.")
+                        
+                except Exception as ex:
+                    self.logger.log(f"  ⚠️ Could not select plan: {ex}")
+                    self.page.keyboard.press("Escape")
+            else:
+                self.logger.log("No Rencana Aksi specified in Doc. Skipping (Default).")
             # 2. Tanggal Kegiatan
             # Selector strategy: Find div with label "Tanggal Kegiatan" -> input[name="date"]
             date_selector = "//div[contains(@class, 'form-group')][.//label[contains(text(), 'Tanggal Kegiatan')]]//input[@name='date']"

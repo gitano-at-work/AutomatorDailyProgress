@@ -18,6 +18,9 @@ Laporan EKinerja Harian
 0730 - 1600 : Coding dan local development EKerjasama
 5 Februari 2026
 0730 - 1600 : Meeting Diskominfo Magelang Kota terkait metodologi data
+6 Februari 2026
+0730 - 1300 : Pelanjutan coding aplikasi eKerjasama
+1300 - 1600 : Dryfilling testttt
 Aktifkan dukungan pembaca layar
 Untuk mengaktifkan dukungan pembaca layar, tekan Ctrl+Alt+Z. Untuk mempelajari pintasan keyboard, tekan Ctrl+garis miring.
 Banner disembunyikan 

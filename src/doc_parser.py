@@ -20,65 +20,101 @@ def parse_google_doc_text(text: str) -> List[Dict]:
     time_pattern = r'(\d{4})\s*-\s*(\d{4})\s*:'
     url_pattern = r'https?://[^\s]+'
     
-    # Split by date headers
-    # result will be [preamble, date1, content1, date2, content2...]
-    date_sections = re.split(date_pattern, text)
+    # Custom split to handle headers + content better
+    # We find all matches first
+    matches = list(re.finditer(date_pattern, text))
     
-    # Skip preamble (index 0), start from index 1 (first date)
-    # We iterate with step 2: date is at i, content is at i+1
-    for i in range(1, len(date_sections) - 1, 2):
-        current_date = date_sections[i].strip()
-        content = date_sections[i + 1]
+    # Iterate matches
+    for i in range(len(matches)):
+        # Header Date
+        current_date_str = matches[i].group(0).strip()
         
-        # Split by time ranges within the content of that date
-        # result: [pre, start1, end1, content1, start2, end2, content2...]
-        time_blocks = re.split(time_pattern, content)
+        # Content is everything until next match or end of string
+        start_idx = matches[i].end()
+        end_idx = matches[i+1].start() if i + 1 < len(matches) else len(text)
+        content_block = text[start_idx:end_idx]
         
-        # Iterate through time blocks
-        # time_blocks[0] is usually empty or whitespace before first time
-        # so we start at 1. Group is 3 items: start, end, description
-        for j in range(1, len(time_blocks) - 2, 3):
-            start_time = time_blocks[j]
-            end_time = time_blocks[j + 1]
-            block_content = time_blocks[j + 2].strip()
+        # Now find Time Blocks in this content block
+        # Looking for "0730 - 1300 :" pattern
+        # Using finditer again to capture context safely
+        time_matches = list(re.finditer(time_pattern, content_block))
+        
+        for j in range(len(time_matches)):
+            start_time = time_matches[j].group(1)
+            end_time = time_matches[j].group(2)
             
-            # Clean up block content
-            lines = [l.strip() for l in block_content.split('\n') if l.strip()]
+            # Content for this time block
+            t_start = time_matches[j].end()
+            t_end = time_matches[j+1].start() if j + 1 < len(time_matches) else len(content_block)
+            raw_entry_text = content_block[t_start:t_end].strip()
+            
+            # Parse the entry text
+            lines = [l.strip() for l in raw_entry_text.split('\n') if l.strip()]
             
             if not lines:
                 continue
 
-            # Extract proof link (always a URL)
+            # 1. Check if Activity is inline with the separators (e.g. ": Activity")
+            # But our Regex includes the ':' at the end.
+            # So raw_entry_text STARTS with the activity usually.
+            
+            # 2. Extract Proof Link
             proof_link = ''
-            content_lines = []
+            clean_lines = []
             for line in lines:
-                if re.search(url_pattern, line):
-                    match = re.search(url_pattern, line)
-                    if match:
-                        proof_link = match.group(0)
-                    # Don't add to content if it's just the link
-                    clean_line = line.replace(proof_link, '').strip()
-                    if clean_line:
-                        content_lines.append(clean_line)
+                url_match = re.search(url_pattern, line)
+                if url_match:
+                    proof_link = url_match.group(0)
+                    line = line.replace(proof_link, '').strip()
+                if line:
+                    clean_lines.append(line)
+                    
+            # 3. Extract Rencana Aksi (Drop Down Text)
+            # Since Chips are invisible in InnerText, we might skip this
+            # OR user might fix it. We keep logic just in case.
+            action_plan = ""
+            final_lines = []
+            for line in clean_lines:
+                if re.match(r'^Rencana\s+Aksi\s*[:\-\.]\s*', line, re.IGNORECASE):
+                    parts = re.split(r'[:\-\.]', line, 1)
+                    if len(parts) > 1:
+                        action_plan = parts[1].strip()
                 else:
-                    content_lines.append(line)
+                    # Fallback: Check if line matches known Action Plans strictly? No.
+                    final_lines.append(line)
             
-            # Remaining lines: first is category, rest is description
-            category = content_lines[0] if len(content_lines) > 0 else ''
+            # Check for numeric Action Plan (User Convention: Standalone number in lines)
+            # We scan for a line that is just a digit (and reasonable length)
+            # We pop it out so it doesn't become part of description
             
-            # Description is the rest, joined
-            description = '\n'.join(content_lines[1:]) if len(content_lines) > 1 else ''
-            # If description is empty, maybe use category as description? 
-            # PRD validation says: Warning (but allow): missing description
+            # Iterate backwards or forwards? 
+            # Usually it's at the end (before the invisible chip). 
+            # Or at the start? User showed it after activity.
+            # Let's check all lines, prioritizing the last one? 
+            # User example: Activity \n 3. So likely near end.
+            
+            found_idx = -1
+            for i, line in enumerate(final_lines):
+                if line.strip().isdigit() and len(line.strip()) < 3: # 1, 2, 10... not "2026"
+                    action_plan = line.strip()
+                    found_idx = i
+                    break # Assume first found number is the index
+            
+            if found_idx != -1:
+                final_lines.pop(found_idx)
+            
+            category = final_lines[0] if final_lines else "Kegiatan Harian"
+            description = '\n'.join(final_lines[1:]) if len(final_lines) > 1 else ""
             
             entry = {
-                'date_raw': current_date, # storing raw for debugging
+                'date_raw': current_date_str,
                 'start_time': start_time,
                 'end_time': end_time,
                 'activity': category,
-                'description': description,
-                'proof_link': proof_link
+                'description': description, # Optional
+                'proof_link': proof_link,
+                'action_plan': action_plan
             }
             entries.append(entry)
-    
+
     return entries

@@ -167,41 +167,55 @@ class BrowserController:
 
         self.logger.log("Navigating to Kinerja Dashboard...")
         try:
-            # 1. Expand Menu (like in Login)
-            try:
-                if self.page_app.is_visible('#start'):
-                    self.logger.log("Hovering main menu to expand...")
-                    self.page_app.hover('#start')
-                    time.sleep(1)
-            except:
-                pass
-
-            # 2. Click 'Layanan Individu ASN'
-            self.logger.log("Clicking 'Layanan Individu ASN'...")
-            self.page_app.wait_for_selector('#btn-layanan-individu', state='visible', timeout=10000)
-            self.page_app.click('#btn-layanan-individu')
-            
-            # 2. Click 'Kinerja'
-            # The user provided HTML shows it's an <a> tag with specific href and class
-            self.logger.log("Clicking 'Kinerja'...")
-            kinerja_selector = 'a[href="https://kinerja.bkn.go.id/login"]'
-            self.page_app.wait_for_selector(kinerja_selector, state='visible', timeout=10000)
-            
-            # Note: This might open in a new tab if target="_blank" (not seen in snippet but possible)
-            # or redirect current page. We assume redirect for now based on "move to another page".
-            
-            # Use expect_navigation or wait_for_url if it redirects
-            with self.page_app.expect_navigation(url="**kinerja.bkn.go.id**", timeout=20000):
-                self.page_app.click(kinerja_selector)
+            # Retry logic for dashboard navigation
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    # 1. Expand Menu (like in Login)
+                    try:
+                        if self.page_app.is_visible('#start'):
+                            self.logger.log("Hovering main menu to expand...")
+                            self.page_app.hover('#start')
+                            time.sleep(1)
+                    except:
+                        pass
+        
+                    # 2. Click 'Layanan Individu ASN'
+                    self.logger.log("Clicking 'Layanan Individu ASN'...")
+                    self.page_app.wait_for_selector('#btn-layanan-individu', state='visible', timeout=10000)
+                    self.page_app.click('#btn-layanan-individu')
+                    
+                    # 2. Click 'Kinerja'
+                    # The user provided HTML shows it's an <a> tag with specific href and class
+                    self.logger.log("Clicking 'Kinerja'...")
+                    kinerja_selector = 'a[href="https://kinerja.bkn.go.id/login"]'
+                    self.page_app.wait_for_selector(kinerja_selector, state='visible', timeout=10000)
+                    
+                    # Note: This might open in a new tab if target="_blank" (not seen in snippet but possible)
+                    # or redirect current page. We assume redirect for now based on "move to another page".
+                    
+                    # Use expect_navigation or wait_for_url if it redirects
+                    with self.page_app.expect_navigation(url="**kinerja.bkn.go.id**", timeout=20000):
+                        self.page_app.click(kinerja_selector)
+                        
+                    self.logger.log("✓ Arrived at Kinerja Dashboard")
+                    
+                    # Update config URL if needed or just log current
+                    self.logger.log(f"Current URL: {self.page_app.url}")
+                    return True
                 
-            self.logger.log("✓ Arrived at Kinerja Dashboard")
-            
-            # Update config URL if needed or just log current
-            self.logger.log(f"Current URL: {self.page_app.url}")
-            return True
-            
+                except Exception as e:
+                    self.logger.log(f"⚠️ Navigation attempt {attempt+1}/{max_retries} failed: {str(e)}")
+                    if attempt < max_retries - 1:
+                        self.logger.log("Retrying in 5 seconds...")
+                        time.sleep(5)
+                        # Optional: Reload page to reset state?
+                        # self.page_app.reload()
+                    else:
+                        self.logger.log("❌ All navigation attempts failed.")
+                        return False
         except Exception as e:
-            self.logger.log(f"❌ Error navigating to dashboard: {str(e)}")
+            self.logger.log(f"❌ Critical Navigation Error: {e}")
             return False
 
     def navigate_to_calendar(self):
@@ -441,16 +455,32 @@ class BrowserController:
             self.logger.log("Reading content...")
             
             # Helper to get text from all pages/sections
+            # We prioritize the readable page content container if available
             content = self.page_doc.evaluate("""() => {
-                return document.body.innerText;
+                // Method 1: Kix Lines (Visual lines)
+                const nodes = document.querySelectorAll('.kix-lineview-content-text');
+                let kixText = "";
+                if (nodes.length > 0) {
+                     const lines = [];
+                     nodes.forEach(n => lines.push(n.innerText));
+                     kixText = lines.join('\\n');
+                }
+                
+                // Method 2: Body InnerText (Accessible content)
+                const bodyText = document.body.innerText;
+                
+                // Return whichever is longer (most likely to contain all data)
+                return (kixText.length > bodyText.length) ? kixText : bodyText;
             }""")
             
             self.logger.log(f"✓ Extracted {len(content)} chars")
             
             # If content is too short (just header), maybe wait more?
+            # Or if it fails to get nodes, we might need to wait for render
             if len(content) < 200:
                 self.logger.log("⚠️ Content seems short. Waiting and retrying...")
                 time.sleep(5)
+                # Retry with simple body access as safety net
                 content = self.page_doc.evaluate("document.body.innerText")
                 self.logger.log(f"✓ Retry extracted {len(content)} chars")
             
