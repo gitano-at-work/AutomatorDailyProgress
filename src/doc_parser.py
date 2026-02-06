@@ -75,7 +75,7 @@ def parse_google_doc_text(text: str) -> List[Dict]:
                 'date_raw': current_date, # storing raw for debugging
                 'start_time': start_time,
                 'end_time': end_time,
-                'category': category,
+                'activity': category,
                 'description': description,
                 'proof_link': proof_link
             }

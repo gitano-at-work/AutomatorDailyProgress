@@ -114,34 +114,84 @@ class DailyReporterApp:
             if not browser.navigate_to_calendar():
                  self.logger.log("❌ Failed to reach Calendar page.")
                  # fail softly? or prompt user?
-                 # self.finish_process(browser)
-                 # return
+                 self.finish_process(browser)
+                 return
             
             # --- Phase 2: Parse Doc ---
+            # --- New Logic: Tab Switching & Form Filling ---
+            
+            # 1. Wait 5 seconds on Calendar page as requested
+            self.logger.log("Waiting 5s on Calendar page...")
+            import time
+            time.sleep(5)
+            
+            # 2. Switch back to Doc tab to capture text
+            self.logger.log("Switching to Google Doc tab...")
+            if browser.page_doc:
+                browser.page_doc.bring_to_front()
+                time.sleep(1) # Brief pause for focus
+            
+            # 3. Capture Text
             doc_text = browser.get_doc_text()
             if not doc_text:
-                self.logger.log("❌ Failed to get document text or empty.")
-                # We continue or stop? Let's stop to be safe for now
-            else:
-                # DUMP FOR ANALYSIS
-                with open("doc_dump.txt", "w", encoding="utf-8") as f:
+                self.logger.log("❌ Failed to get document text.")
+                # We stop here
+                self.finish_process(browser)
+                return
+
+            # 4. Parse Entries
+            entries = parse_google_doc_text(doc_text)
+            self.logger.log(f"✓ Parsed {len(entries)} raw entries.")
+            
+            # Normalize
+            valid_entries = []
+            for entry in entries:
+                norm_date = normalize_date(entry['date_raw'])
+                if norm_date:
+                    entry['date'] = norm_date
+                    valid_entries.append(entry)
+
+            if not valid_entries:
+                self.logger.log("⚠️ No valid entries found.")
+                # DUMP FOR DEBUG
+                with open("doc_dump_fail.txt", "w", encoding="utf-8") as f:
                     f.write(doc_text)
-                self.logger.log("ℹ️  Saved raw doc text to 'doc_dump.txt'")
+                self.finish_process(browser)
+                return
+
+            self.logger.log(f"✓ {len(valid_entries)} entries ready to process.")
+            
+            # 5. Form Filling (Dry Run)
+            from form_filler import FormFiller
+            filler = FormFiller(browser.page_app, self.logger)
+            doc_url = self.config.get('last_doc_url', '')
+
+            # Switch back to App for filling
+            self.logger.log("Switching back to App tab...")
+            time.sleep(1)
+            if browser.page_app:
+                browser.page_app.bring_to_front()
+
+            # Process First Entry Only (for verification)
+            for i, entry in enumerate(valid_entries):
+                self.logger.log(f"--- Processing Entry {i+1}/{len(valid_entries)}: {entry['date']} ---")
                 
-                entries = parse_google_doc_text(doc_text)
-                self.logger.log(f"✓ Parsed {len(entries)} potential entries.")
+                # Open Form
+                if not filler.open_form():
+                    break
                 
-                # Normalize dates strings
-                valid_entries = []
-                for entry in entries:
-                    norm_date = normalize_date(entry['date_raw'])
-                    if norm_date:
-                        entry['date'] = norm_date
-                        valid_entries.append(entry)
-                    else:
-                        self.logger.log(f"⚠️ Invalid date ignored: {entry['date_raw']}")
+                # Fill Form
+                if not filler.fill_entry(entry, doc_url):
+                    break
                 
-                self.logger.log(f"✓ {len(valid_entries)} entries with valid dates ready.")
+                self.logger.log("ℹ️ Dry Run: Skipping Submit. Pausing for user verification.")
+                self.logger.log(f"Filled Activity: {entry['activity']}")
+                
+                # Stop after 1 entry for MVP testing
+                break
+            
+            self.logger.log("Automation Paused (Dry Run).")
+            # browser.close_browser() # Keep open
 
             # FUTURE STEPS (Calendar scanning, etc.)
             

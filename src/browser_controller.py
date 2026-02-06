@@ -298,36 +298,57 @@ class BrowserController:
         try:
             # Check if we are on assessment page
             if "penilaian" in self.page_app.url or self.page_app.is_visible("text=Pelaksanaan Kinerja"):
-                self.logger.log(f"Looking for {qtr} row...")
                 
-                # We need to click "Progress Harian" button which corresponds to the QTR row.
-                # Strategy: Find row with text "TRIWULAN I", then find "Progress Harian" button inside it.
+                # STABILITY CHECK: Wait for the Quarter header to be visible
+                self.logger.log(f"Waiting for '{qtr}' section to load...")
+                try:
+                    self.page_app.wait_for_selector(f"text={qtr}", timeout=10000)
+                    time.sleep(2) # Extra stability buffer as requested
+                except:
+                    self.logger.log("⚠️ Quarter text not found immediately, proceeding anyway...")
+
+                self.logger.log(f"Looking for 'Progress Harian' button for {qtr}...")
                 
-                # Playwright: locator('tr', has_text='TRIWULAN I').locator('text=Progress Harian').click()
-                # Assuming it's a table (tr). If divs, locator('div.row', ...).
-                # Let's try a generic container locator.
+                # Attempt to click specifically associated with the Quarter
+                # Using a broad locator that filters by text
+                # We expect the button to be visible.
                 
-                # Attempt 1: Table row approach (Sibling row)
-                # The header is in one TR, the buttons are in the NEXT TR.
-                # XPath: Find TR containing header -> Next TR -> Find Button
-                self.logger.log(f"Found table row for {qtr}, looking for button in next row...")
-                
+                # Attempt 1: XPath (Sibling/Container)
                 xpath_selector = f"//tr[.//b[contains(text(), '{qtr}')]]/following-sibling::tr[1]//a[contains(., 'Progress Harian')]"
                 
-                # Check if visible
+                clicked = False
                 if self.page_app.is_visible(xpath_selector):
+                    self.logger.log("Clicking via XPath...")
                     self.page_app.click(xpath_selector)
+                    clicked = True
                 else:
-                    self.logger.log("XPath selector failed, trying fallback loose click...")
-                    # Attempt 2: Just click any "Progress Harian" that is visible
-                    self.page_app.locator("text=Progress Harian").first.click(force=True)
-
-                # Wait for navigation to Calendar
-                self.page_app.wait_for_load_state('networkidle')
-                self.logger.log("✓ Clicked Progress Harian")
+                    self.logger.log("XPath selector not visible or invalid. Trying simplified locators...")
+                    # Attempt 2: Locator based on text "Progress Harian"
+                    # We grab all of them, and if there's more than one, we might need logic.
+                    # But usually the TOP one is the active one (Triwulan I).
+                    
+                    btn = self.page_app.locator("a", has_text="Progress Harian").first
+                    if btn.is_visible():
+                        self.logger.log("Found 'Progress Harian' button (Generic). Clicking...")
+                        btn.click()
+                        clicked = True
+                    else:
+                        # Attempt 3: Button tag?
+                        btn2 = self.page_app.locator("button", has_text="Progress Harian").first
+                        if btn2.is_visible():
+                            btn2.click()
+                            clicked = True
                 
+                if clicked:
+                    # Wait for navigation explicitly
+                    self.logger.log("Waiting for navigation to Calendar...")
+                    try:
+                        self.page_app.wait_for_url("**/kinerja_harian/**", timeout=15000)
+                    except:
+                        self.logger.log("⚠️ URL didn't change quickly. Checking manually...")
+                        
         except Exception as e:
-            self.logger.log(f"⚠️ Error in Penilaian step (might already be on calendar?): {e}")
+            self.logger.log(f"⚠️ Error in Penilaian step: {e}")
 
         # FINAL CHECK: Are we on Calendar page?
         # Image 1 shows "Progress Harian" header and a calendar view.
@@ -405,19 +426,11 @@ class BrowserController:
             # Google Docs content is dynamically loaded.
             # We need to wait for the main editor container
             
-            self.logger.log("Waiting for Doc to fully load...")
-            try:
-                self.page_doc.wait_for_load_state('networkidle', timeout=120000)
-            except:
-                self.logger.log("⚠️ Network idle timeout, proceeding...")
+            # Skipped waiting for network idle as per user request to speed up
+            self.logger.log("Assuming Doc is loaded (skipping strict waits)...")
             
-            # Wait for specific editor element usually present in Google Docs
-            try:
-                # Reduced timeout and made optional - we will check content length anyway
-                self.page_doc.wait_for_selector('.kix-appview-editor', timeout=10000) 
-                self.logger.log("✓ Editor loaded (selector found)")
-            except:
-                self.logger.log("⚠️ Editor selector timeout, checking content anyway...")
+            # Skipped waiting for specific selector
+            # self.page_doc.wait_for_selector('.kix-appview-editor', timeout=10000)
 
             time.sleep(2) # Buffer for rendering
             

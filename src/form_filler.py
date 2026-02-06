@@ -14,8 +14,8 @@ class FormFiller:
             self.page.wait_for_selector("button.btn-success:has-text('Tambah Progress Harian')", timeout=5000)
             self.page.click("button.btn-success:has-text('Tambah Progress Harian')")
             
-            # Wait for modal to appear
-            self.page.wait_for_selector("div.modal-title:has-text('Tambah Progress Harian')", state='visible', timeout=5000)
+            # Wait for modal to appear (It is actually an h5, so use class only)
+            self.page.wait_for_selector(".modal-title:has-text('Tambah Progress Harian')", state='visible', timeout=5000)
             self.logger.log("✓ Form Modal Opened")
             return True
         except Exception as e:
@@ -51,7 +51,7 @@ class FormFiller:
             self._fill_date_time(end_selector, entry['end_time'], "End Time")
 
             # 5. Kegiatan Harian
-            self.logger.log("Filling Activity...")
+            self.logger.log(f"Filling Activity: '{entry.get('activity', 'N/A')}'")
             self.page.fill('input[name="kegiatan"]', entry['activity'])
 
             # 6. Realisasi (Volume = 1, Satuan via config/default?)
