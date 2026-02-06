@@ -112,10 +112,20 @@ class DailyReporterApp:
             
             # Smart Calendar Navigation
             if not browser.navigate_to_calendar():
-                 self.logger.log("❌ Failed to reach Calendar page.")
-                 # fail softly? or prompt user?
-                 self.finish_process(browser)
-                 return
+                self.logger.log("❌ Failed to reach Calendar page.")
+                # fail softly? or prompt user?
+                self.finish_process(browser)
+                return
+            
+            # --- DEBUG: DUMP CALENDAR HTML for Analysis ---
+            self.logger.log("ℹ️ Dumping Calendar HTML for analysis...")
+            try:
+                cal_html = browser.page_app.content()
+                with open("calendar_dump.html", "w", encoding="utf-8") as f:
+                    f.write(cal_html)
+                self.logger.log("✓ Saved 'calendar_dump.html'")
+            except Exception as e:
+                self.logger.log(f"⚠️ Failed to dump calendar: {e}")
             
             # --- Phase 2: Parse Doc ---
             # --- New Logic: Tab Switching & Form Filling ---
@@ -161,6 +171,38 @@ class DailyReporterApp:
 
             self.logger.log(f"✓ {len(valid_entries)} entries ready to process.")
             
+            # --- SMART FILLING LOGIC ---
+            from calendar_scanner import CalendarScanner
+            from utils import is_date_fillable
+            
+            scanner = CalendarScanner(browser.page_app, self.logger)
+            filled_dates = scanner.get_filled_dates()
+            self.logger.log(f"ℹ️ Found {len(filled_dates)} existing entries on calendar.")
+
+            # Filter Entries to Process
+            entries_to_fill = []
+            for entry in valid_entries:
+                date = entry['date']
+                
+                # Check 1: Is it allowed? (Weekday + Window)
+                if not is_date_fillable(date):
+                    self.logger.log(f"  . Skipping {date} (Outside window or Weekend)")
+                    continue
+                    
+                # Check 2: Is it already filled?
+                if date in filled_dates:
+                    self.logger.log(f"  . Skipping {date} (Already filled)")
+                    continue
+                    
+                entries_to_fill.append(entry)
+                
+            self.logger.log(f"✓ {len(entries_to_fill)} entries identified for filling.")
+
+            if not entries_to_fill:
+                self.logger.log("✅ Nothing to fill! Use force mode if needed (not implemented).")
+                self.finish_process(browser)
+                return
+
             # 5. Form Filling (Dry Run)
             from form_filler import FormFiller
             filler = FormFiller(browser.page_app, self.logger)
@@ -172,9 +214,9 @@ class DailyReporterApp:
             if browser.page_app:
                 browser.page_app.bring_to_front()
 
-            # Process First Entry Only (for verification)
-            for i, entry in enumerate(valid_entries):
-                self.logger.log(f"--- Processing Entry {i+1}/{len(valid_entries)}: {entry['date']} ---")
+            # Process Filtered Entries
+            for i, entry in enumerate(entries_to_fill):
+                self.logger.log(f"--- Processing Entry {i+1}/{len(entries_to_fill)}: {entry['date']} ---")
                 
                 # Open Form
                 if not filler.open_form():
@@ -185,9 +227,9 @@ class DailyReporterApp:
                     break
                 
                 self.logger.log("ℹ️ Dry Run: Skipping Submit. Pausing for user verification.")
-                self.logger.log(f"Filled Activity: {entry['activity']}")
                 
-                # Stop after 1 entry for MVP testing
+                # Stop after 1 entry for safety during testing
+                # Comment out this break to fill ALL filtered entries
                 break
             
             self.logger.log("Automation Paused (Dry Run).")

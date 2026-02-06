@@ -53,3 +53,30 @@ def normalize_date(date_str: str) -> str:
         return text
         
     return "" # Return empty if failed
+
+from datetime import datetime, timedelta
+
+def is_date_fillable(target_date_str: str) -> bool:
+    """
+    Checks if a date is valid for filling:
+    1. Not Saturday or Sunday.
+    2. Within the [Today - 3 days, Today] window.
+    """
+    try:
+        target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # 1. Check Weekend (5 = Saturday, 6 = Sunday)
+        if target_date.weekday() >= 5:
+            return False
+            
+        # 2. Check Window (Today - 3 <= Target <= Today)
+        start_window = today - timedelta(days=3)
+        
+        if start_window <= target_date <= today:
+            return True
+            
+        return False
+        
+    except ValueError:
+        return False
