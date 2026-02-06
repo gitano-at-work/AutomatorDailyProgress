@@ -10,8 +10,31 @@ class BrowserController:
         self.context = None
         self.page_doc = None  # Tab for Google Doc
         self.page_app = None  # Tab for Web App
+        
+        # CRITICAL: Force Playwright to use a persistent local folder for browsers.
+        # This ensures both the "install" command and the "launch" command look in the same place.
+        # We use a folder "browsers" next to the config (or executable).
+        import os
+        import sys
+        
+        if getattr(sys, 'frozen', False):
+             # If frozen (exe), use the folder where the exe is located
+             base_path = os.path.dirname(sys.executable)
+        else:
+             # If script, use current working directory
+             base_path = os.getcwd()
+             
+        self.browsers_path = os.path.join(base_path, 'browsers')
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = self.browsers_path
+        
+        # Ensure path exists
+        if not os.path.exists(self.browsers_path):
+            try:
+                os.makedirs(self.browsers_path, exist_ok=True)
+            except:
+                pass # Fail silently, let playwright handle logic if path weak
 
-    def launch_browser(self):
+    def launch_browser(self, retry=True):
         """Launches the browser and opens two tabs."""
         try:
             self.playwright = sync_playwright().start()
@@ -33,20 +56,41 @@ class BrowserController:
         except Exception as e:
             error_msg = str(e)
             if "Executable doesn't exist" in error_msg:
+                if not retry:
+                    self.logger.log("❌ Browser installation seemingly succeeded but launch failed again.")
+                    return False
+                    
                 self.logger.log("⚠️ Chromium browser not found.")
                 self.logger.log("⬇️ Installing Chromium... (This happens only once)")
                 try:
                     import subprocess
+                    import os
                     from playwright._impl._driver import compute_driver_executable
                     
                     driver_exec = compute_driver_executable()
-                    subprocess.run([str(driver_exec), "install", "chromium"], check=True)
+                    install_cmd = []
+                    
+                    if isinstance(driver_exec, tuple):
+                        install_cmd.extend(list(driver_exec))
+                    else:
+                        install_cmd.append(str(driver_exec))
+                        
+                    install_cmd.extend(["install", "chromium"])
+                    
+                    self.logger.log(f"Running installer: {install_cmd}")
+                    
+                    # Prevent popped-up console window on Windows if possible
+                    creationflags = 0x08000000 if os.name == 'nt' else 0 # CREATE_NO_WINDOW
+                    
+                    env = os.environ.copy() # Key: Pass the modified env with PLAYWRIGHT_BROWSERS_PATH
+                    
+                    subprocess.run(install_cmd, check=True, shell=False, creationflags=creationflags, env=env)
                     
                     self.logger.log("✅ Browser installed. Retrying launch...")
                     
                     # CRITICAL: Clean up failed instance to avoid Sync/Async conflict
                     self.close_browser() 
-                    return self.launch_browser() 
+                    return self.launch_browser(retry=False) # Prevent infinite loop 
                 except Exception as install_error:
                     self.logger.log(f"❌ Failed to auto-install browser: {install_error}")
                     return False

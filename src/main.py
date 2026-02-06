@@ -348,23 +348,38 @@ class DailyReporterApp:
         self.status_label.config(text=f"Version {APP_VERSION}  |  {text}")
 
     def load_config(self):
+        default_config = {
+            "last_doc_url": "",
+            "web_app_url": "https://asndigital.bkn.go.id/",
+            "calendar_url": "https://asndigital.bkn.go.id/progress/calendar",
+            "new_entry_url": "https://asndigital.bkn.go.id/progress/new",
+            "username": "",
+            "password": "",
+            "max_backtrack_days": 3,
+            "browser_headless": False,
+            "keep_browser": False
+        }
+        
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, 'r') as f:
-                    return json.load(f)
+                    loaded = json.load(f)
+                    default_config.update(loaded) # Merge loaded into defaults
+                    return default_config
             except Exception as e:
                 # Silent fail for GUI start
                 print(f"Config load error: {e}")
-        return {}
+        
+        return default_config
 
     def save_config(self):
+        # Update config object with current UI values
         self.config['last_doc_url'] = self.doc_url_var.get()
         self.config['username'] = self.username_var.get()
         self.config['password'] = self.password_var.get()
         self.config['keep_browser'] = self.keep_browser_var.get()
         
-        if 'web_app_url' not in self.config:
-            self.config['web_app_url'] = 'https://example.com/login'
+        # Ensure other keys exist (handled by load_config defaults, but safe to keep)
         
         try:
             with open(CONFIG_FILE, 'w') as f:
