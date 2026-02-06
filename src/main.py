@@ -22,6 +22,7 @@ class DailyReporterApp:
         self.doc_url_var = tk.StringVar(value=self.config.get('last_doc_url', ''))
         self.username_var = tk.StringVar(value=self.config.get('username', ''))
         self.password_var = tk.StringVar(value=self.config.get('password', ''))
+        self.keep_browser_var = tk.BooleanVar(value=self.config.get('keep_browser', False))
 
         self.create_widgets()
 
@@ -38,6 +39,7 @@ class DailyReporterApp:
         self.config['last_doc_url'] = self.doc_url_var.get()
         self.config['username'] = self.username_var.get()
         self.config['password'] = self.password_var.get()
+        self.config['keep_browser'] = self.keep_browser_var.get()
         # Default URLs if not present
         if 'web_app_url' not in self.config:
             self.config['web_app_url'] = 'https://example.com/login'
@@ -65,6 +67,9 @@ class DailyReporterApp:
         # Password
         tk.Label(frame, text="Password:").pack(anchor='w')
         tk.Entry(frame, textvariable=self.password_var, show="*", width=50).pack(fill='x', pady=2)
+
+        # Settings
+        tk.Checkbutton(frame, text="Keep Browser Open after finish", variable=self.keep_browser_var).pack(anchor='w', pady=5)
 
         # Start Button
         self.start_btn = tk.Button(self.root, text="Start Automation", command=self.start_automation, bg="#4CAF50", fg="white", font=("Helvetica", 10, "bold"))
@@ -119,23 +124,15 @@ class DailyReporterApp:
                 self.finish_process(browser)
                 return
             
-            # --- DEBUG: DUMP CALENDAR HTML for Analysis ---
-            self.logger.log("ℹ️ Dumping Calendar HTML for analysis...")
-            try:
-                cal_html = browser.page_app.content()
-                with open("calendar_dump.html", "w", encoding="utf-8") as f:
-                    f.write(cal_html)
-                self.logger.log("✓ Saved 'calendar_dump.html'")
-            except Exception as e:
-                self.logger.log(f"⚠️ Failed to dump calendar: {e}")
+            # (Removed Calendar Dump per user request)
             
             # --- Phase 2: Parse Doc ---
             # --- New Logic: Tab Switching & Form Filling ---
             
-            # 1. Wait 5 seconds on Calendar page as requested
-            self.logger.log("Waiting 5s on Calendar page...")
+            # 1. Wait a moment for rendering (reduced from 5s)
+            self.logger.log("Waiting 1s on Calendar page...")
             import time
-            time.sleep(5)
+            time.sleep(1)
             
             # 2. Switch back to Doc tab to capture text
             self.logger.log("Switching to Google Doc tab...")
@@ -149,7 +146,7 @@ class DailyReporterApp:
                 self.finish_process(browser)
                 return
 
-            # DUMP FOR DEBUG
+            # DUMP FOR DEBUG - User requested keeping Doc Dump
             with open("doc_dump.txt", "w", encoding="utf-8") as f:
                 f.write(doc_text)
             self.logger.log("ℹ️  Saved raw doc text to 'doc_dump.txt'")
@@ -229,7 +226,7 @@ class DailyReporterApp:
 
             if not entries_to_fill:
                 self.logger.log("✅ Nothing to fill! Use force mode if needed (not implemented).")
-                self.finish_process(browser)
+                self.finish_process(browser, keep_open=self.keep_browser_var.get())
                 return
 
             # 5. Form Filling (Dry Run)
@@ -272,9 +269,14 @@ class DailyReporterApp:
             
             self.logger.log("Phase 2 Complete.")
             
-            # Keep browser open for debugging
-            self.logger.log("Browser will remain open for inspection.")
-            # self.finish_process(browser) # Don't close automatically for now
+            # Check Keep Open Preference
+            if self.keep_browser_var.get():
+                self.logger.log("Browser will remain open.")
+                # self.finish_process(browser, keep_open=True) # Dont close
+                self.root.after(0, lambda: self.reset_ui())
+            else:
+                 self.logger.log("Closing browser...")
+                 self.finish_process(browser, keep_open=False)
             
         except Exception as e:
             self.logger.log(f"❌ CRITICAL ERROR: {str(e)}")
@@ -284,8 +286,8 @@ class DailyReporterApp:
             # but for now let's close to be safe or maybe leave it?
             # browser.close_browser() 
 
-    def finish_process(self, browser):
-        if browser:
+    def finish_process(self, browser, keep_open=False):
+        if browser and not keep_open:
             browser.close_browser()
         self.root.after(0, lambda: self.reset_ui())
 

@@ -92,15 +92,26 @@ class BrowserController:
             
             # 1. Open Login Modal on Landing Page
             self.logger.log("Attempting to open login modal...")
+            # 1. Expand Main Menu
+            # Logic: Check if "Majalah Digital BKN" (bottom menu item) is visible.
+            # If so, menu is expanded. If not, hover/click '#start'.
+            majalah_selector = "span:has-text('Majalah Digital BKN')"
             
             try:
-                # The menu is hidden behind #start button and revealed on hover (group-hover)
-                # We need to hover the container or the start button to "expand" the menu.
-                if self.page_app.is_visible('#start'):
+                if self.page_app.is_visible(majalah_selector):
+                    self.logger.log("Menu already expanded.")
+                else:
                     self.logger.log("Hovering main menu to expand...")
                     self.page_app.hover('#start')
-                    time.sleep(1) # Wait for animation
-                
+                    # Wait for expansion (Majalah button to appear)
+                    try:
+                        self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=2000)
+                        self.logger.log("✓ Menu expanded (Majalah detected)")
+                    except:
+                        self.logger.log("⚠️ Menu expansion animation timeout. Trying click...")
+                        self.page_app.click('#start')
+                        time.sleep(1)
+
                 # Now try clicking the button
                 if self.page_app.is_visible('#btn-layanan-public'):
                     self.page_app.click('#btn-layanan-public', force=True)
@@ -108,18 +119,16 @@ class BrowserController:
                     self.page_app.click('#btn-layanan-login-mobile', force=True)
                 else:
                     self.logger.log("Attempting fallback click for Login menu...")
-                    # Fallback: force click specific text or try clicking start on mobile
-                    self.page_app.click('#start', force=True) # Mobile toggle?
-                    time.sleep(1)
+                    # Fallback: force click specific text
                     self.page_app.click('text=Login', force=True)
                     
             except Exception as e:
-                self.logger.log(f"⚠️ Initial click failed (might already be open?): {e}")
+                self.logger.log(f"⚠️ Initial expand/click failed: {e}")
 
             # 2. Click 'Masuk' in Modal to redirect to SSO
             self.logger.log("Waiting for 'Masuk' button...")
             try:
-                self.page_app.wait_for_selector('#btn-login', state='visible', timeout=5000)
+                self.page_app.wait_for_selector('#btn-login', state='visible', timeout=3000)
                 self.page_app.click('#btn-login')
             except Exception as e:
                 self.logger.log(f"⚠️ Error clicking Masuk: {e}")
@@ -171,12 +180,19 @@ class BrowserController:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    # 1. Expand Menu (like in Login)
+                    # 1. Expand Menu (Smart Hover)
                     try:
-                        if self.page_app.is_visible('#start'):
+                        majalah_selector = "span:has-text('Majalah Digital BKN')"
+                        if self.page_app.is_visible(majalah_selector):
+                            self.logger.log("Menu already expanded.")
+                        elif self.page_app.is_visible('#start'):
                             self.logger.log("Hovering main menu to expand...")
                             self.page_app.hover('#start')
-                            time.sleep(1)
+                            try:
+                                self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=2000)
+                            except:
+                                self.page_app.click('#start')
+                                time.sleep(1)
                     except:
                         pass
         
