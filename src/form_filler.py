@@ -66,8 +66,8 @@ class FormFiller:
                         # Attempt 1: Look inside the container (if semantic)
                         options = self.page.locator(f"{dropdown_container}//li")
                         if options.count() == 0:
-                             # Attempt 2: Global multiselect open list (Vue-Multiselect style)
-                             options = self.page.locator(".multiselect__content-wrapper .multiselect__element")
+                            # Attempt 2: Global multiselect open list (Vue-Multiselect style)
+                            options = self.page.locator(".multiselect__content-wrapper .multiselect__element")
                         
                         if options.count() > idx:
                             options.nth(idx).click()
@@ -162,19 +162,30 @@ class FormFiller:
         self.logger.log("Submitting form...")
         try:
             # Find the OK button in modal footer
-            # Be careful not to click the 'Close' button or the 'OK' in the Error modal
-            # The form modal should be the one currently active/visible.
+            # Logic: Valid OK button is usually 'btn-primary' and has text 'OK' and is VISIBLE
             
-            # We can target the specific modal footer
-            footer_selector = "//div[contains(@class, 'modal-content')]//div[contains(@class, 'modal-footer')]//button[contains(@class, 'btn-primary') and text()='OK']"
+            # Selector for the specific OK button in the active modal
+            # We use a broad but specific enough selector to catch the button even if nested
+            submit_btn = self.page.locator("button.btn.btn-primary:has-text('OK'):visible")
             
-            self.page.click(footer_selector)
-            
-            # Wait for modal to disappear or success message?
-            # For now, just wait a bit
-            time.sleep(2) 
-            self.logger.log("✓ Submitted")
-            return True
+            if submit_btn.count() > 0:
+                submit_btn.first.click()
+                self.logger.log("  > Clicked OK.")
+                
+                # Validation: Wait for modal to disappear??
+                # Or wait for success toast?
+                time.sleep(2) 
+                return True
+            else:
+                self.logger.log("  ❌ Could not find SUBMIT (OK) button!")
+                # Fallback: Try generic footer selector
+                try:
+                    self.page.click("//div[contains(@class, 'modal-footer')]//button[contains(text(), 'OK')]")
+                    self.logger.log("  > Clicked OK (Fallback).")
+                    return True
+                except:
+                    return False
+
         except Exception as e:
             self.logger.log(f"❌ Error submitting: {e}")
             return False

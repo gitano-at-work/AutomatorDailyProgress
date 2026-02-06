@@ -83,35 +83,81 @@ def parse_google_doc_text(text: str) -> List[Dict]:
                     # Fallback: Check if line matches known Action Plans strictly? No.
                     final_lines.append(line)
             
-            # Check for numeric Action Plan (User Convention: Standalone number in lines OR trailing number)
+            # 3. Clean UI Noise (Footer text often caught in the last entry)
+            # Remove lines that look like Google Docs UI text
+            noise_patterns = [
+                r'^aktifkan dukungan pembaca',
+                r'^untuk mengaktifkan dukungan',
+                r'^banner disembunyikan',
+                r'^minta akses edit',
+                r'^bagikan',
+                r'^fileedittampilan',
+                r'^tab dokumen'
+            ]
             
-            # STRATEGY 1: Check Trailing Digit on the Activity Line (e.g. "Coding 3")
-            # This is key for the user's latest format.
-            if final_lines:
-                last_line = final_lines[-1]
-                # Regex for "Activity text" + space + "digit" (1-2 chars)
-                # match: "Some text 3" -> groups: ("Some text", "3")
-                match = re.search(r'^(.*)\s+(\d{1,2})$', last_line)
-                if match:
-                    # We found a trailing digit!
-                    text_part = match.group(1).strip()
-                    digit_part = match.group(2)
-                    
-                    # Update category/description
-                    final_lines[-1] = text_part # Remove digit from line
-                    action_plan = digit_part
+            filtered_lines = []
+            for line in clean_lines:
+                is_noise = False
+                for p in noise_patterns:
+                    if re.match(p, line, re.IGNORECASE):
+                        is_noise = True
+                        break
+                if not is_noise:
+                    filtered_lines.append(line)
             
-            # STRATEGY 2: Check Standalone Line (Fallback if not inline)
+            final_lines = filtered_lines
+            action_plan = ""
+
+            # Check for Rencana Aksi explicit prefix first (as before)
+            # ... (Skipped here as we replaced that block? No, we are inside the block where clean_lines is processed)
+            # Wait, the previous block (lines 78-85) was processing clean_lines to final_lines looking for "Rencana Aksi:" prefix.
+            # I should merge that logic or place this noise filter before it. 
+            
+            # Since I am replacing lines 86-115, I assume lines 72-85 handled the "Rencana Aksi: ..." prefix. 
+            # But the 'final_lines' variable was created there.
+            # So I need to operate on 'final_lines' which might already contain the UI noise.
+            
+            # --- POST-PROCESSING FINAL LINES FOR INDEX ---
+            
+            # 1. Filter Noise from final_lines (in case they got in)
+            real_content_lines = []
+            for line in final_lines:
+                is_noise = False
+                for p in noise_patterns:
+                    if re.match(p, line, re.IGNORECASE):
+                        is_noise = True
+                        break
+                if not is_noise:
+                    real_content_lines.append(line)
+            final_lines = real_content_lines
+
+            # 2. Find Action Plan Index (Trailing Digit or Standalone Digit)
+            # We scan from the END because the index is usually the last relevant thing user typed.
             if not action_plan:
-                found_idx = -1
-                for i, line in enumerate(final_lines):
-                    if line.strip().isdigit() and len(line.strip()) < 3: 
+                for i in range(len(final_lines) - 1, -1, -1):
+                    line = final_lines[i]
+                    
+                    # Case A: Standalone Digit line (e.g. "3")
+                    if line.strip().isdigit() and len(line.strip()) < 3:
                         action_plan = line.strip()
-                        found_idx = i
-                        break 
-                
-                if found_idx != -1:
-                    final_lines.pop(found_idx)
+                        final_lines.pop(i) # Remove this line
+                        break # Found it
+                    
+                    # Case B: Trailing Digit (e.g. "Activity 3")
+                    match = re.search(r'^(.*)\s+(\d{1,2})$', line)
+                    if match:
+                        text_part = match.group(1).strip()
+                        digit_part = match.group(2)
+                        
+                        # Only accept if it looks like an index (1-20?)
+                        # And text_part is not empty (unless it was just " 3" which is Case A)
+                        if text_part:
+                            action_plan = digit_part
+                            final_lines[i] = text_part # Update line to remove digit
+                            break
+            
+            # Determine Category & Description
+            # ... (Matches existing logic below)
             
             category = final_lines[0] if final_lines else "Kegiatan Harian"
             description = '\n'.join(final_lines[1:]) if len(final_lines) > 1 else ""

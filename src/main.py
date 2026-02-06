@@ -181,8 +181,8 @@ class DailyReporterApp:
             from utils import is_date_fillable
             
             scanner = CalendarScanner(browser.page_app, self.logger)
-            filled_dates = scanner.get_filled_dates()
-            self.logger.log(f"ℹ️ Found {len(filled_dates)} existing entries on calendar.")
+            existing_entries = scanner.get_existing_entries()
+            self.logger.log(f"ℹ️ Found entries on {len(existing_entries)} dates.")
 
             # Filter Entries to Process
             entries_to_fill = []
@@ -194,9 +194,33 @@ class DailyReporterApp:
                     self.logger.log(f"  . Skipping {date} (Outside window or Weekend)")
                     continue
                     
-                # Check 2: Is it already filled?
-                if date in filled_dates:
-                    self.logger.log(f"  . Skipping {date} (Already filled)")
+                # Check 2: Is it already filled? (Collision Detection)
+                # We need to check not just Date, but Date + Time Range
+                is_collision = False
+                
+                if date in existing_entries:
+                    # Check specifically for time collision
+                    # Simplified logic: If Start Time matches, it's a collision.
+                    # (Assuming no two valid activities start at same minute)
+                    
+                    entries_on_date = existing_entries[date] # List of dicts {'start':.., 'end':..}
+                    
+                    # Normalize doc time (0730 -> 07:30) for comparison
+                    doc_start = entry['start_time']
+                    if len(doc_start) == 4:
+                        doc_start = f"{doc_start[:2]}:{doc_start[2:]}"
+                    
+                    for existing in entries_on_date:
+                        # Existing is already HH:MM
+                        if existing['start'] == doc_start:
+                            self.logger.log(f"  . Skipping {date} [{doc_start}] (Time slot collision detected)")
+                            is_collision = True
+                            break
+                    
+                    if not is_collision:
+                        self.logger.log(f"  > Valid Gap found on {date} at {doc_start}")
+                
+                if is_collision:
                     continue
                     
                 entries_to_fill.append(entry)
@@ -231,13 +255,17 @@ class DailyReporterApp:
                 if not filler.fill_entry(entry, doc_url):
                     break
                 
-                self.logger.log("ℹ️ Dry Run: Skipping Submit. Pausing for user verification.")
+                # Submit Form
+                if filler.submit_form():
+                    self.logger.log("✓ Entry Submitted.")
+                    # Optional: Wait regarding user request "check if entry appears"
+                    # We rely on visual check or simply waiting for table refresh.
+                    time.sleep(3) # Wait for table to update/modal to close fully
+                else:
+                    self.logger.log("❌ Submit failed. Stopping loop.")
+                    break
                 
-                # Stop after 1 entry for safety during testing
-                # Comment out this break to fill ALL filtered entries
-                break
-            
-            self.logger.log("Automation Paused (Dry Run).")
+                # Loop continues to next entry...
             # browser.close_browser() # Keep open
 
             # FUTURE STEPS (Calendar scanning, etc.)
