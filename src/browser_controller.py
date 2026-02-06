@@ -31,8 +31,23 @@ class BrowserController:
             
             return True
         except Exception as e:
-            self.logger.log(f"❌ Error launching browser: {str(e)}")
-            return False
+            error_msg = str(e)
+            if "Executable doesn't exist" in error_msg:
+                self.logger.log("⚠️ Chromium browser not found.")
+                self.logger.log("⬇️ Installing Chromium... (This happens only once)")
+                try:
+                    import subprocess
+                    import sys
+                    # Use sys.executable to ensure we use the bundled python or environment
+                    subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+                    self.logger.log("✅ Browser installed. Retrying launch...")
+                    return self.launch_browser() # Retry once
+                except Exception as install_error:
+                    self.logger.log(f"❌ Failed to auto-install browser: {install_error}")
+                    return False
+            else:
+                self.logger.log(f"❌ Error launching browser: {error_msg}")
+                return False
 
     def close_browser(self):
         """Closes the browser and cleanup."""

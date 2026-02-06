@@ -166,6 +166,11 @@ class DailyReporterApp:
         helper = tk.Label(doc_frame, text="💡 Update this when starting a new month", 
                          font=("Segoe UI", 8), fg="#666", bg='white')
         helper.pack(anchor='w', pady=(2, 0))
+        
+        template_link = tk.Label(doc_frame, text="📥 Download Template Docs", 
+                                font=("Segoe UI", 8, "underline"), fg="#0066CC", bg='white', cursor="hand2")
+        template_link.pack(anchor='w', pady=(5, 0))
+        template_link.bind("<Button-1>", lambda e: self.open_url("https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"))
 
         # Username
         ttk.Label(config_frame, text="Username (NIP):").pack(anchor='w', pady=(10, 2))
@@ -296,6 +301,10 @@ class DailyReporterApp:
         self.log_text.delete(1.0, tk.END)
         self.log_text.config(state='disabled')
         self.logger.log("Log cleared.", 'info')
+
+    def open_url(self, url):
+        import webbrowser
+        webbrowser.open(url)
 
     def open_log_folder(self):
         """Open the folder containing log files"""
