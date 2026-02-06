@@ -378,12 +378,7 @@ class DailyReporterApp:
         if not self.doc_url_var.get():
             messagebox.showerror("Missing Info", "Please enter your Google Doc URL")
             return
-        if not self.username_var.get():
-            messagebox.showerror("Missing Info", "Please enter your username")
-            return
-        if not self.password_var.get():
-            messagebox.showerror("Missing Info", "Please enter your password")
-            return
+
         
         self.save_config()
         self.start_btn.config(state='disabled', text="⏳ Running...", bg='#6c757d')

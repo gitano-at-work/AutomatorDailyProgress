@@ -37,11 +37,16 @@ class BrowserController:
                 self.logger.log("⬇️ Installing Chromium... (This happens only once)")
                 try:
                     import subprocess
-                    import sys
-                    # Use sys.executable to ensure we use the bundled python or environment
-                    subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+                    from playwright._impl._driver import compute_driver_executable
+                    
+                    driver_exec = compute_driver_executable()
+                    subprocess.run([str(driver_exec), "install", "chromium"], check=True)
+                    
                     self.logger.log("✅ Browser installed. Retrying launch...")
-                    return self.launch_browser() # Retry once
+                    
+                    # CRITICAL: Clean up failed instance to avoid Sync/Async conflict
+                    self.close_browser() 
+                    return self.launch_browser() 
                 except Exception as install_error:
                     self.logger.log(f"❌ Failed to auto-install browser: {install_error}")
                     return False
@@ -157,50 +162,48 @@ class BrowserController:
                 self.logger.log(f"⚠️ Redirection timeout or failed: {e}")
             
             # 4. Fill SSO Credentials
-            self.logger.log("Filling SSO credentials...")
-            try:
-                self.page_app.wait_for_selector('input[name="username"]', state='visible', timeout=10000)
-                self.page_app.fill('input[name="username"]', username)
-                self.page_app.fill('input[name="password"]', password)
-                
-                # 5. Submit SSO Form
-                self.logger.log("Submitting SSO form...")
-                # Try to find a button, or just press Enter
-                if self.page_app.is_visible('button[type="submit"]'):
-                    self.page_app.click('button[type="submit"]')
-                elif self.page_app.is_visible('#kc-login'):
-                    self.page_app.click('#kc-login')
-                else:
-                    self.page_app.press('input[name="password"]', 'Enter')
-                
-                self.logger.log("✓ Credentials submitted")
-                
-                # --- AUTO-FILL 2FA (Experimental) ---
-                if auth_code and auth_code.strip():
-                    self.logger.log(f"⏳ Attempting Auto-2FA with code: {auth_code}")
-                    # Wait for OTP input to appear
-                    try:
-                        # Common ID for Keycloak/SSO OTP is often 'otp', 'totp', or input[name="otp"]
-                        # We try to find it quickly (3s)
-                        otp_selector = 'input[name="otp"], input[id="otp"], input[id="totp"]'
-                        self.page_app.wait_for_selector(otp_selector, state='visible', timeout=5000)
-                        
-                        self.page_app.fill(otp_selector, auth_code)
-                        self.logger.log("  > OTP Code Filled.")
-                        
-                        # Submit again (often same button ID)
-                        if self.page_app.is_visible('#kc-login'):
-                            self.page_app.click('#kc-login')
-                        elif self.page_app.is_visible('button[type="submit"]'):
-                            self.page_app.click('button[type="submit"]')
-                        
-                        self.logger.log("  > OTP Submitted. Handing off to validation...")
-                        
-                    except Exception as e:
-                        self.logger.log(f"⚠️ Auto-2FA failed (Field not found/Error): {e}")
-                
-            except Exception as e:
-                self.logger.log(f"⚠️ Error filling/submitting SSO: {e}")
+            if username and password:
+                self.logger.log("Filling SSO credentials...")
+                try:
+                    self.page_app.wait_for_selector('input[name="username"]', state='visible', timeout=10000)
+                    self.page_app.fill('input[name="username"]', username)
+                    self.page_app.fill('input[name="password"]', password)
+                    
+                    # 5. Submit SSO Form
+                    self.logger.log("Submitting SSO form...")
+                    
+                    if self.page_app.is_visible('button[type="submit"]'):
+                        self.page_app.click('button[type="submit"]')
+                    elif self.page_app.is_visible('#kc-login'):
+                        self.page_app.click('#kc-login')
+                    else:
+                        self.page_app.press('input[name="password"]', 'Enter')
+                    
+                    self.logger.log("✓ Credentials submitted")
+                    
+                    # --- AUTO-FILL 2FA (Experimental) ---
+                    if auth_code and auth_code.strip():
+                        self.logger.log(f"⏳ Attempting Auto-2FA with code: {auth_code}")
+                        try:
+                            otp_selector = 'input[name="otp"], input[id="otp"], input[id="totp"]'
+                            self.page_app.wait_for_selector(otp_selector, state='visible', timeout=5000)
+                            
+                            self.page_app.fill(otp_selector, auth_code)
+                            self.logger.log("  > OTP Code Filled.")
+                            
+                            if self.page_app.is_visible('#kc-login'):
+                                self.page_app.click('#kc-login')
+                            elif self.page_app.is_visible('button[type="submit"]'):
+                                self.page_app.click('button[type="submit"]')
+                            
+                            self.logger.log("  > OTP Submitted. Handing off to validation...")
+                        except Exception as e:
+                            self.logger.log(f"⚠️ Auto-2FA failed (Field not found/Error): {e}")
+                    
+                except Exception as e:
+                    self.logger.log(f"⚠️ Error filling/submitting SSO: {e}")
+            else:
+                self.logger.log("ℹ️ Credentials not provided. Please login manually.")
                 
             # 2FA Pause Logic (Handles validation of success for both Manual and Auto)
             self.handler_2fa()
