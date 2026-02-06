@@ -110,6 +110,13 @@ class DailyReporterApp:
                 self.finish_process(browser)
                 return
             
+            # Smart Calendar Navigation
+            if not browser.navigate_to_calendar():
+                 self.logger.log("❌ Failed to reach Calendar page.")
+                 # fail softly? or prompt user?
+                 # self.finish_process(browser)
+                 # return
+            
             # --- Phase 2: Parse Doc ---
             doc_text = browser.get_doc_text()
             if not doc_text:

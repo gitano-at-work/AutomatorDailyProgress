@@ -13,7 +13,12 @@ class Logger:
         self.text_widget.insert(tk.END, full_message)
         self.text_widget.see(tk.END)
         self.text_widget.configure(state='disabled')
-        print(full_message.strip()) # Also print to console
+        # Safe print for Windows console
+        try:
+            print(full_message.strip())
+        except UnicodeEncodeError:
+            # Fallback for terminals that don't support emojis
+            print(full_message.encode('ascii', 'ignore').decode('ascii').strip())
 
 def normalize_date(date_str: str) -> str:
     """

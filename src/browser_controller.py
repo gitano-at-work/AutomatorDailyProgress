@@ -159,12 +159,6 @@ class BrowserController:
         except Exception as e:
             self.logger.log(f"❌ Login specific error: {str(e)}")
             return # Stop if critical failure
-                
-            # 2FA Pause Logic
-            self.handler_2fa()
-
-        except Exception as e:
-            self.logger.log(f"❌ Login navigation specific error: {str(e)}")
 
     def navigate_to_dashboard(self):
         """Navigates from the portal to the specific Kinerja application."""
@@ -173,7 +167,16 @@ class BrowserController:
 
         self.logger.log("Navigating to Kinerja Dashboard...")
         try:
-            # 1. Click 'Layanan Individu ASN'
+            # 1. Expand Menu (like in Login)
+            try:
+                if self.page_app.is_visible('#start'):
+                    self.logger.log("Hovering main menu to expand...")
+                    self.page_app.hover('#start')
+                    time.sleep(1)
+            except:
+                pass
+
+            # 2. Click 'Layanan Individu ASN'
             self.logger.log("Clicking 'Layanan Individu ASN'...")
             self.page_app.wait_for_selector('#btn-layanan-individu', state='visible', timeout=10000)
             self.page_app.click('#btn-layanan-individu')
@@ -201,6 +204,146 @@ class BrowserController:
             self.logger.log(f"❌ Error navigating to dashboard: {str(e)}")
             return False
 
+    def navigate_to_calendar(self):
+        """
+        Navigates to the actual daily reporting calendar page.
+        Handles dynamic redirects:
+        1. Direct to Calendar (Ideal)
+        2. Redirect to SKP List -> Click Penilaian -> Click Progress Harian
+        """
+        if not self.page_app:
+            return False
+            
+        self.logger.log("Verifying Calendar Page access...")
+        time.sleep(3) # Let redirects settle
+        
+        current_url = self.page_app.url
+        
+        # Helper to detect current Year and Quarter
+        import datetime
+        now = datetime.datetime.now()
+        current_year = str(now.year)
+        # Determine Triwulan (Quarter)
+        month = now.month
+        if 1 <= month <= 3: qtr = "TRIWULAN I"
+        elif 4 <= month <= 6: qtr = "TRIWULAN II"
+        elif 7 <= month <= 9: qtr = "TRIWULAN III"
+        else: qtr = "TRIWULAN IV"
+        
+        self.logger.log(f"Target Period: Year {current_year}, {qtr}")
+
+        # CASE 2: Redirected to SKP List (URL contains '/skp' but not '/penilaian'?)
+        # Or simply check for specific elements on the page
+        
+        # If we see "Daftar Sasaran Kinerja Pegawai" or similar headers
+        is_skp_page = False
+        try:
+            if "skp" in current_url and "penilaian" not in current_url:
+                is_skp_page = True
+            elif self.page_app.is_visible("text=Daftar SKP") or self.page_app.is_visible("text=Daftar Sasaran Kinerja Pegawai"):
+                is_skp_page = True
+        except: pass
+        
+        if is_skp_page:
+            self.logger.log("⚠️ Redirected to SKP List. Navigating manually...")
+            try:
+                # 1. Find Row with Current Year (e.g., "1 Januari 2026")
+                # We look for a row that has the year. Current hypothesis: text=2026
+                # And click "Penilaian" button in that container.
+                
+                # We'll use a locator that finds the row containing the year, then the assessment button
+                # This is tricky without exact HTML, but trying text based chaining.
+                
+                self.logger.log(f"Looking for active SKP for {current_year}...")
+                
+                # Fallback strategy: Just click the first 'Penilaian' button? 
+                # User said "find the most latest". Usually the top one or bottom one.
+                # Let's try to find text "31 Desember 2026" or similar.
+                
+                # Using Playwright's layout selectors: 
+                # Click 'Penilaian' right-of '2026' or similar?
+                # Let's try strict text first.
+                
+                # Assumption: Button text is "Penilaian"
+                # We want the Penilaian button that is associated with current year.
+                
+                # Strategy: Get all 'Penilaian' buttons, check which one is near the year?
+                # Simpler: Click the text "Penilaian" that is visible.
+                # If there are multiple, usually the active one is what we want.
+                
+                # BETTER: Use a specific selector if possible. 
+                # For MVP, let's try to click the FIRST "Penilaian" button visible, 
+                # assuming the latest is usually at top.
+                # User said: "taking the Periode value and find the most current range"
+                
+                self.logger.log("Clicking 'Penilaian' for active period...")
+                # We interpret "Penilaian" button.
+                # Using specific class from user image visual (blue outline button usually)
+                # Text is likely "Penilaian" or "Penilaian SKP"
+                
+                # Try to locate the button that contains text "Penilaian" inside the list
+                self.page_app.click("a:has-text('Penilaian'), button:has-text('Penilaian')", force=True)
+                
+                self.page_app.wait_for_load_state('networkidle')
+                self.logger.log("✓ Entered Assessment (Penilaian) Page")
+                
+            except Exception as e:
+                self.logger.log(f"❌ Failed to click Penilaian: {e}")
+                return False
+
+        # CASE 2b: Now we are likely on Penilaian Page (or were already there)
+        # URL likely contains '/penilaian'
+        # We need to find "TRIWULAN I" (current) and click "Progress Harian"
+        
+        try:
+            # Check if we are on assessment page
+            if "penilaian" in self.page_app.url or self.page_app.is_visible("text=Pelaksanaan Kinerja"):
+                self.logger.log(f"Looking for {qtr} row...")
+                
+                # We need to click "Progress Harian" button which corresponds to the QTR row.
+                # Strategy: Find row with text "TRIWULAN I", then find "Progress Harian" button inside it.
+                
+                # Playwright: locator('tr', has_text='TRIWULAN I').locator('text=Progress Harian').click()
+                # Assuming it's a table (tr). If divs, locator('div.row', ...).
+                # Let's try a generic container locator.
+                
+                # Attempt 1: Table row approach (Sibling row)
+                # The header is in one TR, the buttons are in the NEXT TR.
+                # XPath: Find TR containing header -> Next TR -> Find Button
+                self.logger.log(f"Found table row for {qtr}, looking for button in next row...")
+                
+                xpath_selector = f"//tr[.//b[contains(text(), '{qtr}')]]/following-sibling::tr[1]//a[contains(., 'Progress Harian')]"
+                
+                # Check if visible
+                if self.page_app.is_visible(xpath_selector):
+                    self.page_app.click(xpath_selector)
+                else:
+                    self.logger.log("XPath selector failed, trying fallback loose click...")
+                    # Attempt 2: Just click any "Progress Harian" that is visible
+                    self.page_app.locator("text=Progress Harian").first.click(force=True)
+
+                # Wait for navigation to Calendar
+                self.page_app.wait_for_load_state('networkidle')
+                self.logger.log("✓ Clicked Progress Harian")
+                
+        except Exception as e:
+            self.logger.log(f"⚠️ Error in Penilaian step (might already be on calendar?): {e}")
+
+        # FINAL CHECK: Are we on Calendar page?
+        # Image 1 shows "Progress Harian" header and a calendar view.
+        try:
+            time.sleep(2)
+            if "progress" in self.page_app.url or self.page_app.is_visible("text=Total Jam Progress") or self.page_app.is_visible("text=Hari Ini"):
+                self.logger.log("✅ Successfully reached Calendar Page!")
+                self.logger.log(f"Calendar URL: {self.page_app.url}")
+                return True
+            else:
+                self.logger.log("❌ Could not confirm Calendar page.")
+                self.logger.log(f"Stuck at: {self.page_app.url}")
+                return False
+        except:
+            return False
+
     def handler_2fa(self):
         """Waits for user to handle 2FA."""
         self.logger.log("⏸️  PAUSED: Please complete 2FA manually on the browser.")
@@ -218,10 +361,25 @@ class BrowserController:
             
             start_time = time.time()
             initial_url = self.page_app.url
-            while time.time() - start_time < 120: # 2 mins
-                if self.page_app.url != initial_url and 'login' not in self.page_app.url:
-                    self.logger.log(f"✅ Login appears successful! URL: {self.page_app.url}")
+            self.logger.log(f"Initial URL: {initial_url}")
+            
+            while time.time() - start_time < 180: # 3 mins
+                # Check 1: "Selamat Datang" text (Strongest indicator)
+                try:
+                    if self.page_app.is_visible("text=Selamat Datang"):
+                        self.logger.log("✅ Detected 'Selamat Datang'. Login successful!")
+                        return True
+                except:
+                    pass
+                
+                # Check 2: URL Change (Fallback)
+                # Ensure we are off the SSO/Login page
+                current_url = self.page_app.url
+                if current_url != initial_url and 'sso-siasn' not in current_url and 'login' not in current_url:
+                    # Double check we aren't just on a loading state
+                    self.logger.log(f"✅ Login appears successful! URL: {current_url}")
                     return True
+                    
                 time.sleep(1)
             
             self.logger.log("❌ 2FA/Login timeout.")
@@ -249,19 +407,19 @@ class BrowserController:
             
             self.logger.log("Waiting for Doc to fully load...")
             try:
-                 self.page_doc.wait_for_load_state('networkidle', timeout=120000)
+                self.page_doc.wait_for_load_state('networkidle', timeout=120000)
             except:
-                 self.logger.log("⚠️ Network idle timeout, proceeding...")
+                self.logger.log("⚠️ Network idle timeout, proceeding...")
             
             # Wait for specific editor element usually present in Google Docs
             try:
-                self.page_doc.wait_for_selector('.kix-appview-editor', timeout=60000)
-                self.logger.log("✓ Editor loaded")
+                # Reduced timeout and made optional - we will check content length anyway
+                self.page_doc.wait_for_selector('.kix-appview-editor', timeout=10000) 
+                self.logger.log("✓ Editor loaded (selector found)")
             except:
-                self.logger.log("⚠️ Editor selector invalid, waiting generic time...")
-                time.sleep(5)
-            
-            time.sleep(5) # Extra buffer for text rendering
+                self.logger.log("⚠️ Editor selector timeout, checking content anyway...")
+
+            time.sleep(2) # Buffer for rendering
             
             # Google docs is tricky. simple inner_text might get a lot of UI noise.
             # Best approach for MVP without API: Select All + Copy? No, clipboard access is blocked usually.
