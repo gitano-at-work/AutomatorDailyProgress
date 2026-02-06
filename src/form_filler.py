@@ -73,11 +73,31 @@ class FormFiller:
     def _fill_date_time(self, selector, value, label):
         """Helper to fill date/time inputs which are Vue/MX components."""
         try:
-            # Attempt 1: Direct Fill + Enter
-            self.page.fill(selector, value)
-            self.page.press(selector, 'Enter')
-            self.page.press(selector, 'Tab') # Trigger blur/change
-            self.logger.log(f"  > Set {label}: {value}")
+            # Format Time: 0730 -> 07:30
+            if len(value) == 4 and value.isdigit():
+                formatted_value = value[:2] + ":" + value[2:]
+            else:
+                formatted_value = value
+
+            # Attempt: Click to focus, then Type (better for masked inputs)
+            self.logger.log(f"  > Typing {label}: {formatted_value} into {selector}...")
+            
+            # Ensure visible
+            element = self.page.locator(selector).first
+            if not element.is_visible():
+                self.logger.log(f"  ⚠️ Field {label} hidden/not found")
+                return
+
+            element.click()
+            # Clear existing? - Component might be tricky. CTRL+A + Backspace is safest if needed
+            # self.page.keyboard.press("Control+A")
+            # self.page.keyboard.press("Backspace")
+            
+            # Simulating human typing
+            self.page.keyboard.type(formatted_value, delay=100) 
+            self.page.keyboard.press("Enter")
+            self.page.keyboard.press("Tab") # Trigger blur
+            
         except Exception as e:
             self.logger.log(f"  ⚠️ Error setting {label}: {e}")
 
