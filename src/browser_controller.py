@@ -452,26 +452,19 @@ class BrowserController:
             # Best approach for MVP without API: Select All + Copy? No, clipboard access is blocked usually.
             # Attempt to read 'body' text content via evaluate which sometimes captures a11y text better
             
+            # STRATEGY: Scroll to Bottom to ensure recent entries (virtualized) are rendered
+            self.logger.log("Scrolling to bottom of Doc to ensure text matches...")
+            try:
+                self.page_doc.click('body') # Focus
+                self.page_doc.keyboard.press("Control+End")
+                time.sleep(3) # Wait for virtualized render
+            except Exception as e:
+                self.logger.log(f"⚠️ Scroll failed: {e}")
+
             self.logger.log("Reading content...")
             
-            # Helper to get text from all pages/sections
-            # We prioritize the readable page content container if available
-            content = self.page_doc.evaluate("""() => {
-                // Method 1: Kix Lines (Visual lines)
-                const nodes = document.querySelectorAll('.kix-lineview-content-text');
-                let kixText = "";
-                if (nodes.length > 0) {
-                     const lines = [];
-                     nodes.forEach(n => lines.push(n.innerText));
-                     kixText = lines.join('\\n');
-                }
-                
-                // Method 2: Body InnerText (Accessible content)
-                const bodyText = document.body.innerText;
-                
-                // Return whichever is longer (most likely to contain all data)
-                return (kixText.length > bodyText.length) ? kixText : bodyText;
-            }""")
+            # Simple body extraction after scroll is often best for a11y text
+            content = self.page_doc.evaluate("document.body.innerText")
             
             self.logger.log(f"✓ Extracted {len(content)} chars")
             

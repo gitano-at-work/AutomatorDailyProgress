@@ -83,25 +83,35 @@ def parse_google_doc_text(text: str) -> List[Dict]:
                     # Fallback: Check if line matches known Action Plans strictly? No.
                     final_lines.append(line)
             
-            # Check for numeric Action Plan (User Convention: Standalone number in lines)
-            # We scan for a line that is just a digit (and reasonable length)
-            # We pop it out so it doesn't become part of description
+            # Check for numeric Action Plan (User Convention: Standalone number in lines OR trailing number)
             
-            # Iterate backwards or forwards? 
-            # Usually it's at the end (before the invisible chip). 
-            # Or at the start? User showed it after activity.
-            # Let's check all lines, prioritizing the last one? 
-            # User example: Activity \n 3. So likely near end.
+            # STRATEGY 1: Check Trailing Digit on the Activity Line (e.g. "Coding 3")
+            # This is key for the user's latest format.
+            if final_lines:
+                last_line = final_lines[-1]
+                # Regex for "Activity text" + space + "digit" (1-2 chars)
+                # match: "Some text 3" -> groups: ("Some text", "3")
+                match = re.search(r'^(.*)\s+(\d{1,2})$', last_line)
+                if match:
+                    # We found a trailing digit!
+                    text_part = match.group(1).strip()
+                    digit_part = match.group(2)
+                    
+                    # Update category/description
+                    final_lines[-1] = text_part # Remove digit from line
+                    action_plan = digit_part
             
-            found_idx = -1
-            for i, line in enumerate(final_lines):
-                if line.strip().isdigit() and len(line.strip()) < 3: # 1, 2, 10... not "2026"
-                    action_plan = line.strip()
-                    found_idx = i
-                    break # Assume first found number is the index
-            
-            if found_idx != -1:
-                final_lines.pop(found_idx)
+            # STRATEGY 2: Check Standalone Line (Fallback if not inline)
+            if not action_plan:
+                found_idx = -1
+                for i, line in enumerate(final_lines):
+                    if line.strip().isdigit() and len(line.strip()) < 3: 
+                        action_plan = line.strip()
+                        found_idx = i
+                        break 
+                
+                if found_idx != -1:
+                    final_lines.pop(found_idx)
             
             category = final_lines[0] if final_lines else "Kegiatan Harian"
             description = '\n'.join(final_lines[1:]) if len(final_lines) > 1 else ""
