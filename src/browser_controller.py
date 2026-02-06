@@ -65,7 +65,7 @@ class BrowserController:
         
         self.logger.log("❌ Failed to load Google Doc after 3 attempts")
 
-    def login(self):
+    def login(self, auth_code=None):
         """Handles the login flow on the web app tab."""
         if not self.page_app:
             return
@@ -159,10 +159,35 @@ class BrowserController:
                     self.page_app.press('input[name="password"]', 'Enter')
                 
                 self.logger.log("✓ Credentials submitted")
+                
+                # --- AUTO-FILL 2FA (Experimental) ---
+                if auth_code and auth_code.strip():
+                    self.logger.log(f"⏳ Attempting Auto-2FA with code: {auth_code}")
+                    # Wait for OTP input to appear
+                    try:
+                        # Common ID for Keycloak/SSO OTP is often 'otp', 'totp', or input[name="otp"]
+                        # We try to find it quickly (3s)
+                        otp_selector = 'input[name="otp"], input[id="otp"], input[id="totp"]'
+                        self.page_app.wait_for_selector(otp_selector, state='visible', timeout=5000)
+                        
+                        self.page_app.fill(otp_selector, auth_code)
+                        self.logger.log("  > OTP Code Filled.")
+                        
+                        # Submit again (often same button ID)
+                        if self.page_app.is_visible('#kc-login'):
+                            self.page_app.click('#kc-login')
+                        elif self.page_app.is_visible('button[type="submit"]'):
+                            self.page_app.click('button[type="submit"]')
+                        
+                        self.logger.log("  > OTP Submitted. Handing off to validation...")
+                        
+                    except Exception as e:
+                        self.logger.log(f"⚠️ Auto-2FA failed (Field not found/Error): {e}")
+                
             except Exception as e:
                 self.logger.log(f"⚠️ Error filling/submitting SSO: {e}")
                 
-            # 2FA Pause Logic
+            # 2FA Pause Logic (Handles validation of success for both Manual and Auto)
             self.handler_2fa()
 
         except Exception as e:

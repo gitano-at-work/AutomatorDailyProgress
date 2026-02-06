@@ -22,6 +22,7 @@ class DailyReporterApp:
         self.doc_url_var = tk.StringVar(value=self.config.get('last_doc_url', ''))
         self.username_var = tk.StringVar(value=self.config.get('username', ''))
         self.password_var = tk.StringVar(value=self.config.get('password', ''))
+        self.auth_code_var = tk.StringVar() # No config save for security/freshness
         self.keep_browser_var = tk.BooleanVar(value=self.config.get('keep_browser', False))
 
         self.create_widgets()
@@ -68,6 +69,12 @@ class DailyReporterApp:
         tk.Label(frame, text="Password:").pack(anchor='w')
         tk.Entry(frame, textvariable=self.password_var, show="*", width=50).pack(fill='x', pady=2)
 
+        # Auth Code (Optional)
+        tk.Label(frame, text="Auth Code (Optional):").pack(anchor='w')
+        tk.Entry(frame, textvariable=self.auth_code_var, width=50).pack(fill='x', pady=2)
+        tk.Label(frame, text="Hint: Use a freshly generated auth code and we will try to use that if it doesn't expire.", 
+                font=("Helvetica", 8, "italic"), fg="gray").pack(anchor='w', pady=(0, 5))
+
         # Settings
         tk.Checkbutton(frame, text="Keep Browser Open after finish", variable=self.keep_browser_var).pack(anchor='w', pady=5)
 
@@ -109,7 +116,7 @@ class DailyReporterApp:
 
 
             # Navigate to App and Login
-            browser.login()
+            browser.login(auth_code=self.auth_code_var.get())
             
             # Post-Login Navigation
             if not browser.navigate_to_dashboard():
