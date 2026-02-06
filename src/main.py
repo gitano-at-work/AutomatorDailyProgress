@@ -89,24 +89,24 @@ class DailyReporterApp:
         
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Save Config", command=self.save_config)
+        menubar.add_cascade(label="Berkas", menu=file_menu)
+        file_menu.add_command(label="Simpan Konfigurasi", command=self.save_config)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.root.quit)
+        file_menu.add_command(label="Keluar", command=self.root.quit)
         
         # Tools menu
         tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
-        tools_menu.add_command(label="Clear Log", command=self.clear_log)
-        tools_menu.add_command(label="Open Log Folder", command=self.open_log_folder)
+        menubar.add_cascade(label="Alat", menu=tools_menu)
+        tools_menu.add_command(label="Bersihkan Log", command=self.clear_log)
+        tools_menu.add_command(label="Buka Folder Log", command=self.open_log_folder)
         
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="User Guide", command=self.show_user_guide)
-        help_menu.add_command(label="Document Format", command=self.show_doc_format)
+        menubar.add_cascade(label="Bantuan", menu=help_menu)
+        help_menu.add_command(label="Panduan Pengguna", command=self.show_user_guide)
+        help_menu.add_command(label="Format Dokumen", command=self.show_doc_format)
         help_menu.add_separator()
-        help_menu.add_command(label="About", command=self.show_about)
+        help_menu.add_command(label="Tentang", command=self.show_about)
 
     def create_widgets(self):
         # Main Container
@@ -133,11 +133,11 @@ class DailyReporterApp:
         title_frame = tk.Frame(header_frame, bg="#f5f5f5")
         title_frame.pack(side='left', fill='both', expand=True)
         
-        header = tk.Label(title_frame, text="Daily Progress Reporter", 
+        header = tk.Label(title_frame, text="Pelapor Kinerja Harian", 
                          font=("Segoe UI", 18, "bold"), fg="#222", bg="#f5f5f5")
         header.pack(anchor='w')
         
-        subtitle = tk.Label(title_frame, text="Automate your daily reporting in seconds", 
+        subtitle = tk.Label(title_frame, text="Otomatisasi laporan kinerja Anda dalam hitungan detik", 
                            font=("Segoe UI", 9), fg="#666", bg="#f5f5f5")
         subtitle.pack(anchor='w')
 
@@ -152,35 +152,36 @@ class DailyReporterApp:
         right_col.pack(side='right', fill='both', expand=True)
 
         # --- LEFT COLUMN: Configuration ---
-        config_frame = ttk.LabelFrame(left_col, text=" 📄 Document & Credentials ", padding="15")
+        config_frame = ttk.LabelFrame(left_col, text=" 📄 Dokumen & Akun ", padding="15")
         config_frame.pack(fill='both', expand=True)
 
         # Doc URL with helper
         doc_frame = tk.Frame(config_frame, bg='white')
         doc_frame.pack(fill='x', pady=(0, 10))
         
-        ttk.Label(doc_frame, text="Google Doc URL:").pack(anchor='w')
-        doc_entry = ttk.Entry(doc_frame, textvariable=self.doc_url_var, font=('Segoe UI', 9))
-        doc_entry.pack(fill='x', pady=(2, 0))
+        ttk.Label(doc_frame, text="Link Google Doc:").pack(anchor='w')
+        self.doc_entry = ttk.Entry(doc_frame, textvariable=self.doc_url_var, font=('Segoe UI', 9))
+        self.doc_entry.pack(fill='x', pady=(2, 0))
         
-        helper = tk.Label(doc_frame, text="💡 Update this when starting a new month", 
+        helper = tk.Label(doc_frame, text="💡 Perbarui link ini setiap awal bulan", 
                          font=("Segoe UI", 8), fg="#666", bg='white')
         helper.pack(anchor='w', pady=(2, 0))
         
-        template_link = tk.Label(doc_frame, text="📥 Download Template Docs", 
+        template_link = tk.Label(doc_frame, text="📥 Unduh Template Dokumen", 
                                 font=("Segoe UI", 8, "underline"), fg="#0066CC", bg='white', cursor="hand2")
         template_link.pack(anchor='w', pady=(5, 0))
         template_link.bind("<Button-1>", lambda e: self.open_url("https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"))
 
         # Username
         ttk.Label(config_frame, text="Username (NIP):").pack(anchor='w', pady=(10, 2))
-        ttk.Entry(config_frame, textvariable=self.username_var, font=('Segoe UI', 9)).pack(fill='x')
+        self.user_entry = ttk.Entry(config_frame, textvariable=self.username_var, font=('Segoe UI', 9))
+        self.user_entry.pack(fill='x')
 
         # Password with show/hide toggle
         pwd_frame = tk.Frame(config_frame, bg='white')
         pwd_frame.pack(fill='x', pady=(10, 0))
         
-        ttk.Label(pwd_frame, text="Password:").pack(anchor='w')
+        ttk.Label(pwd_frame, text="Kata Sandi:").pack(anchor='w')
         
         pwd_inner = tk.Frame(pwd_frame, bg='white')
         pwd_inner.pack(fill='x')
@@ -195,33 +196,33 @@ class DailyReporterApp:
         self.show_pwd_btn.pack(side='right', padx=(5, 0))
 
         # --- RIGHT COLUMN: Options & Control ---
-        options_frame = ttk.LabelFrame(right_col, text=" ⚙️ Session Options ", padding="15")
+        options_frame = ttk.LabelFrame(right_col, text=" ⚙️ Opsi Sesi ", padding="15")
         options_frame.pack(fill='both', expand=True)
 
         # 2FA with better explanation
         auth_info = tk.Frame(options_frame, bg='white', relief='solid', borderwidth=1)
         auth_info.pack(fill='x', pady=(0, 10))
         
-        info_label = tk.Label(auth_info, text="🔐 Two-Factor Authentication", 
+        info_label = tk.Label(auth_info, text="🔐 Otentikasi Dua Faktor (2FA)", 
                              font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
         info_label.pack(anchor='w', padx=10, pady=(10, 5))
         
         info_text = tk.Label(auth_info, 
-            text="Enter code BEFORE clicking Start.\nOr leave empty and enter manually.",
+            text="Masukkan kode OTP SEBELUM klik Mulai.\nAtau biarkan kosong dan isi manual nanti.",
             font=("Segoe UI", 8), bg='white', fg='#666', justify='left')
         info_text.pack(anchor='w', padx=10, pady=(0, 10))
         
         auth_entry_frame = tk.Frame(auth_info, bg='white')
         auth_entry_frame.pack(fill='x', padx=10, pady=(0, 10))
         
-        ttk.Label(auth_entry_frame, text="Auth Code:").pack(side='left')
+        ttk.Label(auth_entry_frame, text="Kode OTP:").pack(side='left')
         auth_entry = ttk.Entry(auth_entry_frame, textvariable=self.auth_code_var, 
                               width=15, font=('Segoe UI', 11))
         auth_entry.pack(side='left', padx=(10, 0))
 
         # Keep browser checkbox
         ttk.Checkbutton(options_frame, 
-                       text="Keep browser open after completion", 
+                       text="Biarkan browser terbuka setelah selesai", 
                        variable=self.keep_browser_var).pack(anchor='w', pady=(10, 0))
 
         # --- ACTION BUTTON (centered, prominent) ---
@@ -229,7 +230,7 @@ class DailyReporterApp:
         btn_container.pack(pady=20)
         
         self.start_btn = tk.Button(btn_container, 
-            text="▶  Start Automation", 
+            text="▶  Mulai Otomatisasi", 
             command=self.start_automation,
             bg="#28a745", 
             fg="white", 
@@ -247,7 +248,7 @@ class DailyReporterApp:
         self.start_btn.bind('<Leave>', lambda e: self.start_btn.config(bg="#28a745"))
 
         # --- STATUS LOG ---
-        log_frame = ttk.LabelFrame(main_frame, text=" 📋 Activity Log ", padding="10")
+        log_frame = ttk.LabelFrame(main_frame, text=" 📋 Log Aktivitas ", padding="10")
         log_frame.pack(fill='both', expand=True, pady=(10, 0))
         
         # Scrolled text widget
@@ -270,7 +271,114 @@ class DailyReporterApp:
         self.log_text.tag_config('info', foreground='#569cd6')
 
         self.logger = Logger(self.log_text)
-        self.logger.log("✓ Ready to start automation", 'success')
+        
+        # Initial Check
+        self.root.after(500, self.check_initial_state)
+
+    def check_initial_state(self):
+        """Check if browser is installed and set UI mode."""
+        # Create a temp controller just to check
+        temp_browser = BrowserController(self.logger, self.config)
+        if temp_browser.is_browser_installed():
+            self.set_ready_mode()
+            self.logger.log("✓ Siap memulai otomatisasi", 'success')
+        else:
+            self.set_download_mode()
+            self.logger.log("⚠️ Browser belum terinstall. Silakan unduh terlebih dahulu.", 'warning')
+
+        self.status_label.pack(side='left')
+        
+        # Version info
+        ttk.Label(status_frame, text=f"v{APP_VERSION}", font=("Segoe UI", 8)).pack(side='right')
+
+    def toggle_inputs(self, state):
+        """Enable or disable input fields."""
+        # state is 'normal' or 'disabled'
+        try:
+            self.doc_entry.config(state=state)
+            self.user_entry.config(state=state)
+            self.pwd_entry.config(state=state)
+            self.show_pwd_btn.config(state=state)
+            # Template link is a label, no easy disable but it's harmless
+        except:
+            pass # In case called before widgets init
+
+    def set_download_mode(self):
+        """Disable inputs, set button to Download."""
+        self.toggle_inputs('disabled') # Gray out inputs
+        
+        self.start_btn.config(
+            text="⬇ Unduh Browser Otomatis", 
+            command=self.start_download,
+            bg='#ff9800' # Orange for attention
+        )
+        self.update_status("Diperlukan instalasi browser")
+
+    def set_ready_mode(self):
+        """Enable inputs, set button to Start."""
+        self.toggle_inputs('normal') # Enable inputs
+        
+        self.start_btn.config(
+            text="🚀 Mulai Otomatisasi", 
+            command=self.start_automation,
+            bg='#4CAF50'
+        )
+        self.update_status("Siap")
+
+    def start_download(self):
+        """Start download thread."""
+        self.start_btn.config(state='disabled', text="⏳ Mengunduh...", bg='#6c757d')
+        threading.Thread(target=self._download_worker, daemon=True).start()
+
+    def _download_worker(self):
+        browser = BrowserController(self.logger, self.config)
+        self.logger.log("⬇️ Memulai unduhan... (Sekitar 400MB)", 'info')
+        self.logger.log("   Mohon tunggu, tergantung kecepatan internet Anda. Proses ini hanya dilakukan sekali saja, setelah install tidak perlu menunggu lagi", 'info')
+        
+        try:
+            # Custom ASCII Progress Bar Logic
+            # Since real parsing is hard, we simulate a 'beat' bar based on output activity
+            # Or assume roughly 10 steps if we can guess.
+            # Simple approach: Just print/update a bar line for every chunk of output.
+            
+            progress = 0
+            
+            for line in browser.install_browser():
+                # Try to detect percentage in line (e.g. "34%")
+                import re
+                match = re.search(r'(\d+)%', line)
+                if match:
+                    try:
+                        pct = int(match.group(1))
+                        progress = pct
+                    except: 
+                        pass
+                else:
+                    # If no percentage, just increment slowly to show activity
+                    progress = (progress + 5) % 100
+                
+                # Render ASCII Bar: |==========          | 50%
+                bar_len = 30
+                filled = int(bar_len * progress / 100)
+                bar = "|" + "=" * filled + " " * (bar_len - filled) + "|"
+                
+                # We log this as a status update
+                # Since Logger appends, we can't replace lines easily. 
+                # So we ONLY log the bar if it changes significantly or just the status line.
+                # Actually, appending many bars is spammy. 
+                # Let's just log key updates or a compact bar.
+                if '%' in line:
+                    self.logger.log(f"{bar} {progress}%")
+                else:
+                    # For non-percentage lines (like "Downloading..."), just log the text
+                    self.logger.log(f"   {line}")
+                
+            self.logger.log("|" + "=" * 30 + "| 100%")
+            self.logger.log("✅ Unduhan & Instalasi Selesai! Tutup aplikasi ini lalu buka lagi", 'success')
+            self.root.after(0, self.set_ready_mode)
+        except Exception as e:
+            self.logger.log(f"❌ Gagal mengunduh: {e}", 'error')
+            self.root.after(0, lambda: self.start_btn.config(state='normal', text="⬇ Coba Lagi"))
 
     def create_status_bar(self):
         """Bottom status bar"""
@@ -384,20 +492,20 @@ class DailyReporterApp:
         try:
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(self.config, f, indent=4)
-            self.update_status("Configuration saved")
+            self.update_status("Konfigurasi disimpan")
         except Exception as e:
-            messagebox.showerror("Save Error", f"Failed to save config:\n{str(e)}")
+            messagebox.showerror("Gagal Menyimpan", f"Gagal menyimpan konfigurasi:\n{str(e)}")
 
     def start_automation(self):
         # Validation
         if not self.doc_url_var.get():
-            messagebox.showerror("Missing Info", "Please enter your Google Doc URL")
+            messagebox.showerror("Informasi Kurang", "Mohon masukkan Link Google Doc Anda")
             return
 
         
         self.save_config()
-        self.start_btn.config(state='disabled', text="⏳ Running...", bg='#6c757d')
-        self.update_status("Automation in progress...")
+        self.start_btn.config(state='disabled', text="⏳ Sedang Berjalan...", bg='#6c757d')
+        self.update_status("Otomatisasi sedang berjalan...")
         self.logger.log("=" * 60, 'info')
         
         thread = threading.Thread(target=self.run_process)
