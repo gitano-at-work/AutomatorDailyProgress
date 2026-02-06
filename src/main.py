@@ -95,8 +95,8 @@ class DailyReporterApp:
         btn_frame.pack(pady=15)
         
         self.start_btn = tk.Button(btn_frame, text="Start Automation", command=self.start_automation, 
-                                 bg="#28a745", fg="white", font=("Segoe UI", 10, "bold"), 
-                                 padx=20, pady=5, relief="flat")
+                                bg="#28a745", fg="white", font=("Segoe UI", 10, "bold"), 
+                                padx=20, pady=5, relief="flat")
         self.start_btn.pack()
 
         # --- Status Log ---
@@ -131,8 +131,6 @@ class DailyReporterApp:
 
             # Navigate to Doc
             browser.navigate_to_doc(self.doc_url_var.get())
-            
-
 
             # Navigate to App and Login
             browser.login(auth_code=self.auth_code_var.get())
@@ -301,8 +299,8 @@ class DailyReporterApp:
                 # self.finish_process(browser, keep_open=True) # Dont close
                 self.root.after(0, lambda: self.reset_ui())
             else:
-                 self.logger.log("Closing browser...")
-                 self.finish_process(browser, keep_open=False)
+                self.logger.log("Closing browser...")
+                self.finish_process(browser, keep_open=False)
             
         except Exception as e:
             self.logger.log(f"❌ CRITICAL ERROR: {str(e)}")
