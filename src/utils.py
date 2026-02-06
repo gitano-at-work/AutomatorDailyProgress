@@ -6,13 +6,18 @@ class Logger:
         self.text_widget = text_widget
         self.log_file = log_file
 
-    def log(self, message: str):
+    def log(self, message: str, tag: str = None):
         timestamp = datetime.now().strftime("%H:%M:%S")
         full_message = f"[{timestamp}] {message}\n"
         
         # 1. Update GUI
         self.text_widget.configure(state='normal')
-        self.text_widget.insert(tk.END, full_message)
+        # Insert with tag if provided, otherwise just insert
+        if tag:
+            self.text_widget.insert(tk.END, full_message, tag)
+        else:
+            self.text_widget.insert(tk.END, full_message)
+            
         self.text_widget.see(tk.END)
         self.text_widget.configure(state='disabled')
         

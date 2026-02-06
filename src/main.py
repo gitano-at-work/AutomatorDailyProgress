@@ -1,5 +1,6 @@
+
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox, scrolledtext
 import json
 import os
 import threading
@@ -8,24 +9,334 @@ from utils import Logger, normalize_date
 from doc_parser import parse_google_doc_text
 
 CONFIG_FILE = 'config.json'
+APP_VERSION = "1.0.0"
 
 class DailyReporterApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Daily Progress Reporter")
-        self.root.geometry("550x650")
+        self.root.title(f"Daily Progress Reporter v{APP_VERSION}")
+        self.root.geometry("750x780")
         self.root.resizable(False, False)
+        
+        # Set app icon (if exists)
+        try:
+            self.root.iconbitmap('assets/app_icon.ico')
+        except:
+            pass
 
         self.config = self.load_config()
-
+        self.setup_style()
+        
         # UI Variables
         self.doc_url_var = tk.StringVar(value=self.config.get('last_doc_url', ''))
         self.username_var = tk.StringVar(value=self.config.get('username', ''))
         self.password_var = tk.StringVar(value=self.config.get('password', ''))
-        self.auth_code_var = tk.StringVar() # No config save for security/freshness
+        self.auth_code_var = tk.StringVar()
         self.keep_browser_var = tk.BooleanVar(value=self.config.get('keep_browser', False))
 
+        self.create_menu()
         self.create_widgets()
+        
+        # Status bar at bottom
+        self.create_status_bar()
+
+    def setup_style(self):
+        """Modern styling with better colors"""
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        # Custom colors
+        BG_COLOR = "#f5f5f5"
+        ACCENT_COLOR = "#0066CC"
+        
+        self.root.configure(bg=BG_COLOR)
+        
+        # Button styles
+        style.configure('Accent.TButton',
+            background=ACCENT_COLOR,
+            foreground='white',
+            borderwidth=0,
+            focuscolor='none',
+            font=('Segoe UI', 10, 'bold'),
+            padding=10
+        )
+        
+        style.map('Accent.TButton',
+            background=[('active', '#0052A3')]
+        )
+        
+        style.configure('TLabel',
+            background=BG_COLOR,
+            font=('Segoe UI', 9)
+        )
+        
+        style.configure('TLabelframe',
+            background=BG_COLOR,
+            borderwidth=1,
+            relief='solid'
+        )
+        
+        style.configure('TLabelframe.Label',
+            background=BG_COLOR,
+            font=('Segoe UI', 9, 'bold'),
+            foreground='#333'
+        )
+
+    def create_menu(self):
+        """Add menu bar"""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Save Config", command=self.save_config)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Clear Log", command=self.clear_log)
+        tools_menu.add_command(label="Open Log Folder", command=self.open_log_folder)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="User Guide", command=self.show_user_guide)
+        help_menu.add_command(label="Document Format", command=self.show_doc_format)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=self.show_about)
+
+    def create_widgets(self):
+        # Main Container
+        main_frame = ttk.Frame(self.root, padding="20 20 20 10")
+        main_frame.pack(fill='both', expand=True)
+
+        # Header with icon/logo space
+        header_frame = tk.Frame(main_frame, bg="#f5f5f5")
+        header_frame.pack(fill='x', pady=(0, 20))
+        
+        # Try to load logo
+        try:
+            from PIL import Image, ImageTk
+            if os.path.exists('assets/logo_small.png'):
+                logo_img = Image.open('assets/logo_small.png')
+                logo_img = logo_img.resize((48, 48), Image.LANCZOS)
+                logo_photo = ImageTk.PhotoImage(logo_img)
+                logo_label = tk.Label(header_frame, image=logo_photo, bg="#f5f5f5")
+                logo_label.image = logo_photo  # Keep reference
+                logo_label.pack(side='left', padx=(0, 15))
+        except:
+            pass
+        
+        title_frame = tk.Frame(header_frame, bg="#f5f5f5")
+        title_frame.pack(side='left', fill='both', expand=True)
+        
+        header = tk.Label(title_frame, text="Daily Progress Reporter", 
+                         font=("Segoe UI", 18, "bold"), fg="#222", bg="#f5f5f5")
+        header.pack(anchor='w')
+        
+        subtitle = tk.Label(title_frame, text="Automate your daily reporting in seconds", 
+                           font=("Segoe UI", 9), fg="#666", bg="#f5f5f5")
+        subtitle.pack(anchor='w')
+
+        # --- TWO COLUMN LAYOUT ---
+        content_frame = tk.Frame(main_frame, bg="#f5f5f5")
+        content_frame.pack(fill='both', expand=True)
+        
+        left_col = tk.Frame(content_frame, bg="#f5f5f5")
+        left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
+        
+        right_col = tk.Frame(content_frame, bg="#f5f5f5")
+        right_col.pack(side='right', fill='both', expand=True)
+
+        # --- LEFT COLUMN: Configuration ---
+        config_frame = ttk.LabelFrame(left_col, text=" 📄 Document & Credentials ", padding="15")
+        config_frame.pack(fill='both', expand=True)
+
+        # Doc URL with helper
+        doc_frame = tk.Frame(config_frame, bg='white')
+        doc_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(doc_frame, text="Google Doc URL:").pack(anchor='w')
+        doc_entry = ttk.Entry(doc_frame, textvariable=self.doc_url_var, font=('Segoe UI', 9))
+        doc_entry.pack(fill='x', pady=(2, 0))
+        
+        helper = tk.Label(doc_frame, text="💡 Update this when starting a new month", 
+                         font=("Segoe UI", 8), fg="#666", bg='white')
+        helper.pack(anchor='w', pady=(2, 0))
+
+        # Username
+        ttk.Label(config_frame, text="Username (NIP):").pack(anchor='w', pady=(10, 2))
+        ttk.Entry(config_frame, textvariable=self.username_var, font=('Segoe UI', 9)).pack(fill='x')
+
+        # Password with show/hide toggle
+        pwd_frame = tk.Frame(config_frame, bg='white')
+        pwd_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Label(pwd_frame, text="Password:").pack(anchor='w')
+        
+        pwd_inner = tk.Frame(pwd_frame, bg='white')
+        pwd_inner.pack(fill='x')
+        
+        self.pwd_entry = ttk.Entry(pwd_inner, textvariable=self.password_var, 
+                                    show="●", font=('Segoe UI', 9))
+        self.pwd_entry.pack(side='left', fill='x', expand=True, pady=(2, 0))
+        
+        self.show_pwd_btn = tk.Button(pwd_inner, text="👁", font=('Segoe UI', 10),
+                                      command=self.toggle_password, 
+                                      relief='flat', bg='white', cursor='hand2')
+        self.show_pwd_btn.pack(side='right', padx=(5, 0))
+
+        # --- RIGHT COLUMN: Options & Control ---
+        options_frame = ttk.LabelFrame(right_col, text=" ⚙️ Session Options ", padding="15")
+        options_frame.pack(fill='both', expand=True)
+
+        # 2FA with better explanation
+        auth_info = tk.Frame(options_frame, bg='white', relief='solid', borderwidth=1)
+        auth_info.pack(fill='x', pady=(0, 10))
+        
+        info_label = tk.Label(auth_info, text="🔐 Two-Factor Authentication", 
+                             font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
+        info_label.pack(anchor='w', padx=10, pady=(10, 5))
+        
+        info_text = tk.Label(auth_info, 
+            text="Enter code BEFORE clicking Start.\nOr leave empty and enter manually.",
+            font=("Segoe UI", 8), bg='white', fg='#666', justify='left')
+        info_text.pack(anchor='w', padx=10, pady=(0, 10))
+        
+        auth_entry_frame = tk.Frame(auth_info, bg='white')
+        auth_entry_frame.pack(fill='x', padx=10, pady=(0, 10))
+        
+        ttk.Label(auth_entry_frame, text="Auth Code:").pack(side='left')
+        auth_entry = ttk.Entry(auth_entry_frame, textvariable=self.auth_code_var, 
+                              width=15, font=('Segoe UI', 11))
+        auth_entry.pack(side='left', padx=(10, 0))
+
+        # Keep browser checkbox
+        ttk.Checkbutton(options_frame, 
+                       text="Keep browser open after completion", 
+                       variable=self.keep_browser_var).pack(anchor='w', pady=(10, 0))
+
+        # --- ACTION BUTTON (centered, prominent) ---
+        btn_container = tk.Frame(main_frame, bg="#f5f5f5")
+        btn_container.pack(pady=20)
+        
+        self.start_btn = tk.Button(btn_container, 
+            text="▶  Start Automation", 
+            command=self.start_automation,
+            bg="#28a745", 
+            fg="white", 
+            font=("Segoe UI", 12, "bold"),
+            padx=40, 
+            pady=12,
+            relief="flat",
+            cursor="hand2",
+            borderwidth=0
+        )
+        self.start_btn.pack()
+        
+        # Hover effect
+        self.start_btn.bind('<Enter>', lambda e: self.start_btn.config(bg="#218838"))
+        self.start_btn.bind('<Leave>', lambda e: self.start_btn.config(bg="#28a745"))
+
+        # --- STATUS LOG ---
+        log_frame = ttk.LabelFrame(main_frame, text=" 📋 Activity Log ", padding="10")
+        log_frame.pack(fill='both', expand=True, pady=(10, 0))
+        
+        # Scrolled text widget
+        self.log_text = scrolledtext.ScrolledText(
+            log_frame, 
+            height=12,
+            state='disabled',
+            bg="#1e1e1e",  # Dark theme for logs
+            fg="#d4d4d4",
+            font=("Consolas", 9),
+            relief="flat",
+            wrap='word'
+        )
+        self.log_text.pack(fill='both', expand=True)
+        
+        # Configure log text tags for colored output
+        self.log_text.tag_config('success', foreground='#4ec9b0')
+        self.log_text.tag_config('error', foreground='#f48771')
+        self.log_text.tag_config('warning', foreground='#dcdcaa')
+        self.log_text.tag_config('info', foreground='#569cd6')
+
+        self.logger = Logger(self.log_text)
+        self.logger.log("✓ Ready to start automation", 'success')
+
+    def create_status_bar(self):
+        """Bottom status bar"""
+        status_frame = tk.Frame(self.root, bg='#e0e0e0', height=25)
+        status_frame.pack(side='bottom', fill='x')
+        
+        self.status_label = tk.Label(status_frame, 
+            text=f"Version {APP_VERSION}  |  Ready", 
+            bg='#e0e0e0', 
+            fg='#666',
+            font=('Segoe UI', 8),
+            anchor='w'
+        )
+        self.status_label.pack(side='left', padx=10)
+
+    def toggle_password(self):
+        """Show/hide password"""
+        if self.pwd_entry.cget('show') == '●':
+            self.pwd_entry.config(show='')
+            self.show_pwd_btn.config(text='🙈')
+        else:
+            self.pwd_entry.config(show='●')
+            self.show_pwd_btn.config(text='👁')
+
+    def clear_log(self):
+        """Clear the log display"""
+        self.log_text.config(state='normal')
+        self.log_text.delete(1.0, tk.END)
+        self.log_text.config(state='disabled')
+        self.logger.log("Log cleared.", 'info')
+
+    def open_log_folder(self):
+        """Open the folder containing log files"""
+        import webbrowser
+        log_dir = os.getcwd() # Currently logs are in the same dir
+        webbrowser.open(log_dir)
+
+    def show_user_guide(self):
+        """Open user guide"""
+        messagebox.showinfo("User Guide", "Coming soon!")
+
+    def show_doc_format(self):
+        """Show document format requirements"""
+        format_text = (
+            "Document Format Requirements:\n\n"
+            "[Date in Indonesian format]\n"
+            "[Empty line]\n"
+            "[Time Range] :\n"
+            "[Category/Activity Name]\n"
+            "[Description]\n"
+            "[Proof Link]\n\n"
+            "Example:\n"
+            "2 Februari 2026\n\n"
+            "0730 - 1300 :\n"
+            "Meeting dan Penyetaraan Desain\n"
+            "https://drive.google.com/..."
+        )
+        messagebox.showinfo("Document Format", format_text)
+
+    def show_about(self):
+        """Show about dialog"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("About")
+        dialog.geometry("300x200")
+        tk.Label(dialog, text=f"Daily Progress Reporter v{APP_VERSION}", font=('Segoe UI', 12, 'bold')).pack(pady=20)
+        tk.Label(dialog, text="Created by Your Agent").pack()
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=20)
+
+    def update_status(self, text):
+        """Update status bar"""
+        self.status_label.config(text=f"Version {APP_VERSION}  |  {text}")
 
     def load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -33,8 +344,8 @@ class DailyReporterApp:
                 with open(CONFIG_FILE, 'r') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"⚠️ Warning: Failed to load config.json ({e}). Using defaults.")
-                # Optional: Rename corrupt file?
+                # Silent fail for GUI start
+                print(f"Config load error: {e}")
         return {}
 
     def save_config(self):
@@ -42,87 +353,40 @@ class DailyReporterApp:
         self.config['username'] = self.username_var.get()
         self.config['password'] = self.password_var.get()
         self.config['keep_browser'] = self.keep_browser_var.get()
-        # Default URLs if not present
+        
         if 'web_app_url' not in self.config:
             self.config['web_app_url'] = 'https://example.com/login'
         
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(self.config, f, indent=4)
-
-    def create_widgets(self):
-        # UI Styling (Basic ttk theme)
-        import tkinter.ttk as ttk
-        style = ttk.Style()
-        style.theme_use('clam') # Usually cleaner on Windows than default
-        
-        # Main Container with Padding
-        main_frame = ttk.Frame(self.root, padding="20 20 20 20")
-        main_frame.pack(fill='both', expand=True)
-
-        # Header
-        header = tk.Label(main_frame, text="Daily Progress Reporter", font=("Segoe UI", 16, "bold"), fg="#333")
-        header.pack(pady=(0, 20))
-
-        # --- Section 1: Configuration ---
-        config_frame = ttk.LabelFrame(main_frame, text=" Configuration ", padding="15 10")
-        config_frame.pack(fill='x', pady=5)
-
-        # Doc URL
-        ttk.Label(config_frame, text="Google Doc URL:").grid(row=0, column=0, sticky='w', pady=5)
-        ttk.Entry(config_frame, textvariable=self.doc_url_var, width=50).grid(row=0, column=1, padx=10, pady=5)
-
-        # Username
-        ttk.Label(config_frame, text="Username (NIP):").grid(row=1, column=0, sticky='w', pady=5)
-        ttk.Entry(config_frame, textvariable=self.username_var, width=50).grid(row=1, column=1, padx=10, pady=5)
-
-        # Password
-        ttk.Label(config_frame, text="Password:").grid(row=2, column=0, sticky='w', pady=5)
-        ttk.Entry(config_frame, textvariable=self.password_var, show="*", width=50).grid(row=2, column=1, padx=10, pady=5)
-
-        # --- Section 2: Session Options ---
-        options_frame = ttk.LabelFrame(main_frame, text=" Session Options ", padding="15 10")
-        options_frame.pack(fill='x', pady=10)
-
-        # Auth Code
-        ttk.Label(options_frame, text="Auth Code (2FA):").grid(row=0, column=0, sticky='w', pady=5)
-        ttk.Entry(options_frame, textvariable=self.auth_code_var, width=20).grid(row=0, column=1, sticky='w', padx=10, pady=5)
-        ttk.Label(options_frame, text="(Optional - Auto-fills if provided)", font=("Segoe UI", 8, "italic"), foreground="gray").grid(row=0, column=2, sticky='w')
-
-        # Keep Browser Checkbox
-        ttk.Checkbutton(options_frame, text="Keep Browser Open after finish", variable=self.keep_browser_var).grid(row=1, column=0, columnspan=3, sticky='w', pady=5)
-
-        # --- Action Buttons ---
-        btn_frame = ttk.Frame(main_frame)
-        btn_frame.pack(pady=15)
-        
-        self.start_btn = tk.Button(btn_frame, text="Start Automation", command=self.start_automation, 
-                                bg="#28a745", fg="white", font=("Segoe UI", 10, "bold"), 
-                                padx=20, pady=5, relief="flat")
-        self.start_btn.pack()
-
-        # --- Status Log ---
-        log_frame = ttk.LabelFrame(main_frame, text=" Live Log ", padding="10")
-        log_frame.pack(fill='both', expand=True, pady=5)
-        
-        self.log_text = tk.Text(log_frame, height=8, state='disabled', bg="#f8f9fa", font=("Consolas", 9), relief="flat")
-        self.log_text.pack(fill='both', expand=True)
-
-        self.logger = Logger(self.log_text)
-        self.logger.log("Ready to start...")
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(self.config, f, indent=4)
+            self.update_status("Configuration saved")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save config:\n{str(e)}")
 
     def start_automation(self):
-        self.save_config()
-        self.start_btn.config(state='disabled', text="Running...")
+        # Validation
+        if not self.doc_url_var.get():
+            messagebox.showerror("Missing Info", "Please enter your Google Doc URL")
+            return
+        if not self.username_var.get():
+            messagebox.showerror("Missing Info", "Please enter your username")
+            return
+        if not self.password_var.get():
+            messagebox.showerror("Missing Info", "Please enter your password")
+            return
         
-        # Run in a separate thread so GUI doesn't freeze
+        self.save_config()
+        self.start_btn.config(state='disabled', text="⏳ Running...", bg='#6c757d')
+        self.update_status("Automation in progress...")
+        self.logger.log("=" * 60, 'info')
+        
         thread = threading.Thread(target=self.run_process)
         thread.start()
 
-
-
     def run_process(self):
         try:
-            self.logger.log("Initializing automation...")
+            self.logger.log("🚀 Initializing automation...", 'info')
             
             # Initialize Browser
             browser = BrowserController(self.logger, self.config)
@@ -132,55 +396,45 @@ class DailyReporterApp:
 
             # Navigate to Doc
             browser.navigate_to_doc(self.doc_url_var.get())
-
+            
             # Navigate to App and Login
             browser.login(auth_code=self.auth_code_var.get())
             
             # Post-Login Navigation
             if not browser.navigate_to_dashboard():
-                self.logger.log("❌ Failed to navigate to Kinerja dashboard.")
+                self.logger.log("❌ Failed to navigate to Kinerja dashboard.", 'error')
                 self.finish_process(browser)
                 return
             
             # Smart Calendar Navigation
             if not browser.navigate_to_calendar():
-                self.logger.log("❌ Failed to reach Calendar page.")
-                # fail softly? or prompt user?
+                self.logger.log("❌ Failed to reach Calendar page.", 'error')
                 self.finish_process(browser)
                 return
             
-            # (Removed Calendar Dump per user request)
-            
-            # --- Phase 2: Parse Doc ---
-            # --- New Logic: Tab Switching & Form Filling ---
-            
-            # 1. Wait a moment for rendering (reduced from 5s)
-            self.logger.log("Waiting 1s on Calendar page...")
+            # MAIN LOGIC INTEGRATION FROM EXISTING CODE
             import time
+            self.logger.log("⏱️ Waiting for page to stabilize...", 'info')
             time.sleep(1)
             
-            # 2. Switch back to Doc tab to capture text
-            self.logger.log("Switching to Google Doc tab...")
+            self.logger.log("📄 Switching to Google Doc tab...", 'info')
             if browser.page_doc:
                 browser.page_doc.bring_to_front()
-            # 3. Capture Text
+                
             doc_text = browser.get_doc_text()
             if not doc_text:
-                self.logger.log("❌ Failed to get document text.")
-                # We stop here
+                self.logger.log("❌ Failed to get document text.", 'error')
                 self.finish_process(browser)
                 return
 
-            # DUMP FOR DEBUG - User requested keeping Doc Dump
+            # Debug Dump
             with open("doc_dump.txt", "w", encoding="utf-8") as f:
                 f.write(doc_text)
-            self.logger.log("ℹ️  Saved raw doc text to 'doc_dump.txt'")
+            self.logger.log("💾 Saved raw doc text to 'doc_dump.txt'", 'info')
 
-            # 4. Parse Entries
             entries = parse_google_doc_text(doc_text)
-            self.logger.log(f"✓ Parsed {len(entries)} raw entries.")
+            self.logger.log(f"✓ Parsed {len(entries)} raw entries.", 'success')
             
-            # Normalize
             valid_entries = []
             for entry in entries:
                 norm_date = normalize_date(entry['date_raw'])
@@ -189,14 +443,13 @@ class DailyReporterApp:
                     valid_entries.append(entry)
 
             if not valid_entries:
-                self.logger.log("⚠️ No valid entries found.")
-                # DUMP FOR DEBUG
+                self.logger.log("⚠️ No valid entries found.", 'warning')
                 with open("doc_dump_fail.txt", "w", encoding="utf-8") as f:
                     f.write(doc_text)
                 self.finish_process(browser)
                 return
 
-            self.logger.log(f"✓ {len(valid_entries)} entries ready to process.")
+            self.logger.log(f"✓ {len(valid_entries)} valid entries ready.", 'success')
             
             # --- SMART FILLING LOGIC ---
             from calendar_scanner import CalendarScanner
@@ -204,112 +457,84 @@ class DailyReporterApp:
             
             scanner = CalendarScanner(browser.page_app, self.logger)
             existing_entries = scanner.get_existing_entries()
-            self.logger.log(f"ℹ️ Found entries on {len(existing_entries)} dates.")
+            self.logger.log(f"ℹ️ Found entries on {len(existing_entries)} dates.", 'info')
 
-            # Filter Entries to Process
             entries_to_fill = []
             for entry in valid_entries:
                 date = entry['date']
                 
-                # Check 1: Is it allowed? (Weekday + Window)
                 if not is_date_fillable(date):
-                    self.logger.log(f"  . Skipping {date} (Outside window or Weekend)")
+                    self.logger.log(f"  ⊗ Skipping {date} (Outside window/Weekend)", 'warning')
                     continue
                     
-                # Check 2: Is it already filled? (Collision Detection)
-                # We need to check not just Date, but Date + Time Range
                 is_collision = False
-                
                 if date in existing_entries:
-                    # Check specifically for time collision
-                    # Simplified logic: If Start Time matches, it's a collision.
-                    # (Assuming no two valid activities start at same minute)
-                    
-                    entries_on_date = existing_entries[date] # List of dicts {'start':.., 'end':..}
-                    
-                    # Normalize doc time (0730 -> 07:30) for comparison
                     doc_start = entry['start_time']
                     if len(doc_start) == 4:
                         doc_start = f"{doc_start[:2]}:{doc_start[2:]}"
                     
-                    for existing in entries_on_date:
-                        # Existing is already HH:MM
+                    for existing in existing_entries[date]:
                         if existing['start'] == doc_start:
-                            self.logger.log(f"  . Skipping {date} [{doc_start}] (Time slot collision detected)")
+                            self.logger.log(f"  ⊗ Skipping {date} [{doc_start}] (Time Collision)", 'warning')
                             is_collision = True
                             break
                     
                     if not is_collision:
-                        self.logger.log(f"  > Valid Gap found on {date} at {doc_start}")
+                        self.logger.log(f"  ✓ Gap found on {date} at {doc_start}", 'success')
                 
                 if is_collision:
                     continue
                     
                 entries_to_fill.append(entry)
                 
-            self.logger.log(f"✓ {len(entries_to_fill)} entries identified for filling.")
+            self.logger.log(f"✓ {len(entries_to_fill)} entries identified for filling.", 'success')
 
             if not entries_to_fill:
-                self.logger.log("✅ Nothing to fill! Use force mode if needed (not implemented).")
+                self.logger.log("✅ Nothing to fill! Use force mode if needed.", 'success')
                 self.finish_process(browser, keep_open=self.keep_browser_var.get())
                 return
 
-            # 5. Form Filling (Dry Run)
             from form_filler import FormFiller
             filler = FormFiller(browser.page_app, self.logger)
             doc_url = self.config.get('last_doc_url', '')
 
-            # Switch back to App for filling
-            self.logger.log("Switching back to App tab...")
+            self.logger.log("📝 Switching to App tab...", 'info')
             time.sleep(1)
             if browser.page_app:
                 browser.page_app.bring_to_front()
 
-            # Process Filtered Entries
             for i, entry in enumerate(entries_to_fill):
-                self.logger.log(f"--- Processing Entry {i+1}/{len(entries_to_fill)}: {entry['date']} ---")
+                self.logger.log(f"▶ Entry {i+1}/{len(entries_to_fill)}: {entry['date']}", 'info')
                 
-                # Open Form
                 if not filler.open_form():
                     break
                 
-                # Fill Form
                 if not filler.fill_entry(entry, doc_url):
                     break
                 
-                # Submit Form
                 if filler.submit_form():
-                    self.logger.log("✓ Entry Submitted.")
-                    # Optional: Wait regarding user request "check if entry appears"
-                    # We rely on visual check or simply waiting for table refresh.
-                    time.sleep(3) # Wait for table to update/modal to close fully
+                    self.logger.log("✓ Entry Submitted.", 'success')
+                    time.sleep(3)
                 else:
-                    self.logger.log("❌ Submit failed. Stopping loop.")
+                    self.logger.log("❌ Submit failed. Stopping loop.", 'error')
                     break
-                
-                # Loop continues to next entry...
-            # browser.close_browser() # Keep open
-
-            # FUTURE STEPS (Calendar scanning, etc.)
             
-            self.logger.log("Phase 2 Complete.")
+            self.logger.log("=" * 60, 'info')
+            self.logger.log("🎉 Phase 2 Complete.", 'success')
             
-            # Check Keep Open Preference
             if self.keep_browser_var.get():
-                self.logger.log("Browser will remain open.")
-                # self.finish_process(browser, keep_open=True) # Dont close
+                self.logger.log("Browser will remain open.", 'info')
                 self.root.after(0, lambda: self.reset_ui())
             else:
-                self.logger.log("Closing browser...")
+                self.logger.log("Closing browser...", 'info')
                 self.finish_process(browser, keep_open=False)
             
         except Exception as e:
-            self.logger.log(f"❌ CRITICAL ERROR: {str(e)}")
+            self.logger.log(f"❌ CRITICAL ERROR: {str(e)}", 'error')
+            import traceback
+            self.logger.log(traceback.format_exc(), 'error')
             # Don't close on error
-            self.logger.log("Process paused due to error.")
-            # In case of error we might want to keep browser open for debugging
-            # but for now let's close to be safe or maybe leave it?
-            # browser.close_browser() 
+            self.logger.log("Process paused due to error.", 'warning')
 
     def finish_process(self, browser, keep_open=False):
         if browser and not keep_open:
@@ -317,10 +542,12 @@ class DailyReporterApp:
         self.root.after(0, lambda: self.reset_ui())
 
     def reset_ui(self):
-        self.start_btn.config(state='normal', text="Start Automation")
-        self.logger.log("Process finished.")
+        self.start_btn.config(state='normal', text="▶  Start Automation", bg="#28a745")
+        self.update_status("Ready | Process finished")
+        self.logger.log("Process finished.", 'info')
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = DailyReporterApp(root)
     root.mainloop()
+
