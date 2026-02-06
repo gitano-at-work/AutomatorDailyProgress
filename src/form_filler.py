@@ -142,7 +142,10 @@ class FormFiller:
                 return
 
             element.click()
-            # Clear existing? - Component might be tricky. CTRL+A + Backspace is safest if needed
+            # Clear existing content first
+            element.fill('') # Clears standard inputs
+            # For robust clearing on some frameworks, we might need a small wait or keyboard action
+            # But fill('') triggers 'input' event usually.
             # self.page.keyboard.press("Control+A")
             # self.page.keyboard.press("Backspace")
             

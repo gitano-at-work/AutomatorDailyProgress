@@ -8,16 +8,16 @@ Tab dokumen
 Laporan EKinerja Harian  Bulan Januari Tahun 2026
 Laporan EKinerja Harian
 2 Februari 2026
-0730 - 1300 : Meeting dan Penyetaraan Desain EKerjasama
-1300 - 1500 : Meeting Progress Magang
-1500 - 1600 : Mencoba melakukan duplikasi ekerjasama
+0730 - 1300 : Meeting dan Penyetaraan Desain EKerjasama 1
+1300 - 1500 : Meeting Progress Magang 1
+1500 - 1600 : Mencoba melakukan duplikasi ekerjasama 2
 3 Februari 2026
-0730 - 1300 : Meeting dan Penyetaraan paham dengan PDAM
-1300 - 1600 : Local development setup dan FTP data grabbing untuk EKerjasama
+0730 - 1300 : Meeting dan Penyetaraan paham dengan PDAM 2
+1300 - 1600 : Local development setup dan FTP data grabbing untuk EKerjasama 3
 4 Februari 2026
-0730 - 1600 : Coding dan local development EKerjasama
+0730 - 1600 : Coding dan local development EKerjasama 3
 5 Februari 2026
-0730 - 1600 : Meeting Diskominfo Magelang Kota terkait metodologi data
+0730 - 1600 : Meeting Diskominfo Magelang Kota terkait metodologi data 1
 6 Februari 2026
 0730 - 1300 : Pelanjutan coding aplikasi eKerjasama 3
 1300 - 1600 : Dryfilling testttt 4
