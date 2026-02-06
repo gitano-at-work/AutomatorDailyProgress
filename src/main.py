@@ -13,7 +13,7 @@ class DailyReporterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Daily Progress Reporter")
-        self.root.geometry("600x450")
+        self.root.geometry("550x650")
         self.root.resizable(False, False)
 
         self.config = self.load_config()
@@ -49,43 +49,62 @@ class DailyReporterApp:
             json.dump(self.config, f, indent=4)
 
     def create_widgets(self):
-        # Header
-        header = tk.Label(self.root, text="Daily Progress Reporter", font=("Helvetica", 16, "bold"))
-        header.pack(pady=10)
+        # UI Styling (Basic ttk theme)
+        import tkinter.ttk as ttk
+        style = ttk.Style()
+        style.theme_use('clam') # Usually cleaner on Windows than default
+        
+        # Main Container with Padding
+        main_frame = ttk.Frame(self.root, padding="20 20 20 20")
+        main_frame.pack(fill='both', expand=True)
 
-        # Input Frame
-        frame = tk.Frame(self.root)
-        frame.pack(pady=5, padx=20, fill='x')
+        # Header
+        header = tk.Label(main_frame, text="Daily Progress Reporter", font=("Segoe UI", 16, "bold"), fg="#333")
+        header.pack(pady=(0, 20))
+
+        # --- Section 1: Configuration ---
+        config_frame = ttk.LabelFrame(main_frame, text=" Configuration ", padding="15 10")
+        config_frame.pack(fill='x', pady=5)
 
         # Doc URL
-        tk.Label(frame, text="Google Doc URL (Current Month):").pack(anchor='w')
-        tk.Entry(frame, textvariable=self.doc_url_var, width=50).pack(fill='x', pady=2)
+        ttk.Label(config_frame, text="Google Doc URL:").grid(row=0, column=0, sticky='w', pady=5)
+        ttk.Entry(config_frame, textvariable=self.doc_url_var, width=50).grid(row=0, column=1, padx=10, pady=5)
 
         # Username
-        tk.Label(frame, text="Username:").pack(anchor='w')
-        tk.Entry(frame, textvariable=self.username_var, width=50).pack(fill='x', pady=2)
+        ttk.Label(config_frame, text="Username (NIP):").grid(row=1, column=0, sticky='w', pady=5)
+        ttk.Entry(config_frame, textvariable=self.username_var, width=50).grid(row=1, column=1, padx=10, pady=5)
 
         # Password
-        tk.Label(frame, text="Password:").pack(anchor='w')
-        tk.Entry(frame, textvariable=self.password_var, show="*", width=50).pack(fill='x', pady=2)
+        ttk.Label(config_frame, text="Password:").grid(row=2, column=0, sticky='w', pady=5)
+        ttk.Entry(config_frame, textvariable=self.password_var, show="*", width=50).grid(row=2, column=1, padx=10, pady=5)
 
-        # Auth Code (Optional)
-        tk.Label(frame, text="Auth Code (Optional):").pack(anchor='w')
-        tk.Entry(frame, textvariable=self.auth_code_var, width=50).pack(fill='x', pady=2)
-        tk.Label(frame, text="Hint: Use a freshly generated auth code and we will try to use that if it doesn't expire.", 
-                font=("Helvetica", 8, "italic"), fg="gray").pack(anchor='w', pady=(0, 5))
+        # --- Section 2: Session Options ---
+        options_frame = ttk.LabelFrame(main_frame, text=" Session Options ", padding="15 10")
+        options_frame.pack(fill='x', pady=10)
 
-        # Settings
-        tk.Checkbutton(frame, text="Keep Browser Open after finish", variable=self.keep_browser_var).pack(anchor='w', pady=5)
+        # Auth Code
+        ttk.Label(options_frame, text="Auth Code (2FA):").grid(row=0, column=0, sticky='w', pady=5)
+        ttk.Entry(options_frame, textvariable=self.auth_code_var, width=20).grid(row=0, column=1, sticky='w', padx=10, pady=5)
+        ttk.Label(options_frame, text="(Optional - Auto-fills if provided)", font=("Segoe UI", 8, "italic"), foreground="gray").grid(row=0, column=2, sticky='w')
 
-        # Start Button
-        self.start_btn = tk.Button(self.root, text="Start Automation", command=self.start_automation, bg="#4CAF50", fg="white", font=("Helvetica", 10, "bold"))
-        self.start_btn.pack(pady=15, ipadx=10, ipady=5)
+        # Keep Browser Checkbox
+        ttk.Checkbutton(options_frame, text="Keep Browser Open after finish", variable=self.keep_browser_var).grid(row=1, column=0, columnspan=3, sticky='w', pady=5)
 
-        # Status Log
-        tk.Label(self.root, text="Status Log:").pack(anchor='w', padx=20)
-        self.log_text = tk.Text(self.root, height=10, state='disabled', bg="#f0f0f0", font=("Consolas", 9))
-        self.log_text.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+        # --- Action Buttons ---
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=15)
+        
+        self.start_btn = tk.Button(btn_frame, text="Start Automation", command=self.start_automation, 
+                                 bg="#28a745", fg="white", font=("Segoe UI", 10, "bold"), 
+                                 padx=20, pady=5, relief="flat")
+        self.start_btn.pack()
+
+        # --- Status Log ---
+        log_frame = ttk.LabelFrame(main_frame, text=" Live Log ", padding="10")
+        log_frame.pack(fill='both', expand=True, pady=5)
+        
+        self.log_text = tk.Text(log_frame, height=8, state='disabled', bg="#f8f9fa", font=("Consolas", 9), relief="flat")
+        self.log_text.pack(fill='both', expand=True)
 
         self.logger = Logger(self.log_text)
         self.logger.log("Ready to start...")
