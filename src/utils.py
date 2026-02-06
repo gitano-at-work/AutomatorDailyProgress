@@ -2,22 +2,31 @@ import tkinter as tk
 from datetime import datetime
 
 class Logger:
-    def __init__(self, text_widget: tk.Text):
+    def __init__(self, text_widget: tk.Text, log_file="daily_reporter.log"):
         self.text_widget = text_widget
+        self.log_file = log_file
 
     def log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
         full_message = f"[{timestamp}] {message}\n"
         
+        # 1. Update GUI
         self.text_widget.configure(state='normal')
         self.text_widget.insert(tk.END, full_message)
         self.text_widget.see(tk.END)
         self.text_widget.configure(state='disabled')
-        # Safe print for Windows console
+        
+        # 2. Write to File
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+        except Exception as e:
+            print(f"Failed to write to log file: {e}")
+
+        # 3. Console Output (Safe)
         try:
             print(full_message.strip())
         except UnicodeEncodeError:
-            # Fallback for terminals that don't support emojis
             print(full_message.encode('ascii', 'ignore').decode('ascii').strip())
 
 def normalize_date(date_str: str) -> str:

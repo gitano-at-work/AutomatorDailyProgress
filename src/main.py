@@ -32,8 +32,9 @@ class DailyReporterApp:
             try:
                 with open(CONFIG_FILE, 'r') as f:
                     return json.load(f)
-            except:
-                pass
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to load config.json ({e}). Using defaults.")
+                # Optional: Rename corrupt file?
         return {}
 
     def save_config(self):
