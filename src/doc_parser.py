@@ -119,28 +119,16 @@ def parse_google_doc_text(text: str) -> List[Dict]:
             
             # --- POST-PROCESSING FINAL LINES FOR INDEX ---
             
-            # 1. Filter Noise from final_lines (in case they got in)
-            real_content_lines = []
-            for line in final_lines:
-                is_noise = False
-                for p in noise_patterns:
-                    if re.match(p, line, re.IGNORECASE):
-                        is_noise = True
-                        break
-                if not is_noise:
-                    real_content_lines.append(line)
-            final_lines = real_content_lines
-
-            # 2. Find Action Plan Index (Trailing Digit or Standalone Digit)
+            # Find Action Plan Index (Trailing Digit or Standalone Digit)
             # We scan from the END because the index is usually the last relevant thing user typed.
             if not action_plan:
-                for i in range(len(final_lines) - 1, -1, -1):
-                    line = final_lines[i]
+                for line_idx in range(len(final_lines) - 1, -1, -1):
+                    line = final_lines[line_idx]
                     
                     # Case A: Standalone Digit line (e.g. "3")
                     if line.strip().isdigit() and len(line.strip()) < 3:
                         action_plan = line.strip()
-                        final_lines.pop(i) # Remove this line
+                        final_lines.pop(line_idx) # Remove this line
                         break # Found it
                     
                     # Case B: Trailing Digit (e.g. "Activity 3")
@@ -153,7 +141,7 @@ def parse_google_doc_text(text: str) -> List[Dict]:
                         # And text_part is not empty (unless it was just " 3" which is Case A)
                         if text_part:
                             action_plan = digit_part
-                            final_lines[i] = text_part # Update line to remove digit
+                            final_lines[line_idx] = text_part # Update line to remove digit
                             break
             
             # Determine Category & Description
@@ -166,8 +154,8 @@ def parse_google_doc_text(text: str) -> List[Dict]:
                 'date_raw': current_date_str,
                 'start_time': start_time,
                 'end_time': end_time,
-                'activity': category,
-                'description': description, # Optional
+                'category': category,
+                'description': description,
                 'proof_link': proof_link,
                 'action_plan': action_plan
             }

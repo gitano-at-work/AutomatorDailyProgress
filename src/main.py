@@ -21,7 +21,7 @@ class DailyReporterApp:
         # Set app icon (if exists)
         try:
             self.root.iconbitmap('assets/app_icon.ico')
-        except:
+        except Exception:
             pass
 
         self.config = self.load_config()
@@ -127,7 +127,7 @@ class DailyReporterApp:
                 logo_label = tk.Label(header_frame, image=logo_photo, bg="#f5f5f5")
                 logo_label.image = logo_photo  # Keep reference
                 logo_label.pack(side='left', padx=(0, 15))
-        except:
+        except Exception:
             pass
         
         title_frame = tk.Frame(header_frame, bg="#f5f5f5")
@@ -286,11 +286,6 @@ class DailyReporterApp:
             self.set_download_mode()
             self.logger.log("⚠️ Browser belum terinstall. Silakan unduh terlebih dahulu.", 'warning')
 
-        self.status_label.pack(side='left')
-        
-        # Version info
-        ttk.Label(status_frame, text=f"v{APP_VERSION}", font=("Segoe UI", 8)).pack(side='right')
-
     def toggle_inputs(self, state):
         """Enable or disable input fields."""
         # state is 'normal' or 'disabled'
@@ -300,7 +295,7 @@ class DailyReporterApp:
             self.pwd_entry.config(state=state)
             self.show_pwd_btn.config(state=state)
             # Template link is a label, no easy disable but it's harmless
-        except:
+        except Exception:
             pass # In case called before widgets init
 
     def set_download_mode(self):

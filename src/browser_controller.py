@@ -1,5 +1,7 @@
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
 import time
+import os
+import sys
 
 class BrowserController:
     def __init__(self, logger, config: dict):
@@ -14,8 +16,6 @@ class BrowserController:
         # CRITICAL: Force Playwright to use a persistent local folder for browsers.
         # This ensures both the "install" command and the "launch" command look in the same place.
         # We use a folder "browsers" next to the config (or executable).
-        import os
-        import sys
         
         if getattr(sys, 'frozen', False):
              # If frozen (exe), use the folder where the exe is located
@@ -31,7 +31,7 @@ class BrowserController:
         if not os.path.exists(self.browsers_path):
             try:
                 os.makedirs(self.browsers_path, exist_ok=True)
-            except:
+            except Exception:
                 pass # Fail silently, let playwright handle logic if path weak
 
     def is_browser_installed(self):
@@ -45,7 +45,7 @@ class BrowserController:
             for item in items:
                 if os.path.isdir(os.path.join(self.browsers_path, item)):
                     return True
-        except:
+        except Exception:
             return False
         return False
 

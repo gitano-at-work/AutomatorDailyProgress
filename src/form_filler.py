@@ -104,8 +104,8 @@ class FormFiller:
             self._fill_date_time(end_selector, entry['end_time'], "End Time")
 
             # 5. Kegiatan Harian
-            self.logger.log(f"Filling Activity: '{entry.get('activity', 'N/A')}'")
-            self.page.fill('input[name="kegiatan"]', entry['activity'])
+            self.logger.log(f"Filling Activity: '{entry.get('category', 'N/A')}'")
+            self.page.fill('input[name="kegiatan"]', entry['category'])
 
             # 6. Realisasi (Volume = 1, Satuan via config/default?)
             # Logic: User said "Fill left field with 1, keep right field blank"

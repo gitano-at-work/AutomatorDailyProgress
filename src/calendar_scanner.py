@@ -1,6 +1,7 @@
 from playwright.sync_api import Page
 from datetime import datetime
 from utils import Logger
+import re
 
 class CalendarScanner:
     def __init__(self, page: Page, logger: Logger):
@@ -32,8 +33,6 @@ class CalendarScanner:
             # Helper to parse "Senin 2" -> Date
             month_year_text = self.page.locator(".vuecal__title-bar .vuecal__title").inner_text()
             current_month, current_year = self._parse_month_year(month_year_text)
-            
-            import re
             
             for i, header_text in enumerate(headers):
                 if i >= len(cells): break
@@ -94,7 +93,7 @@ class CalendarScanner:
         
         text = text.lower()
         found_month = 0
-        found_year = 2026 # Default
+        found_year = datetime.now().year  # Use current year as default
         
         for m_name, m_val in indo_months.items():
             if m_name in text:
@@ -102,7 +101,6 @@ class CalendarScanner:
                 break
         
         # Find year (4 digits)
-        import re
         y_match = re.search(r'\d{4}', text)
         if y_match:
             found_year = int(y_match.group(0))

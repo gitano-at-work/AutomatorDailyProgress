@@ -1,5 +1,5 @@
 import tkinter as tk
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class Logger:
     def __init__(self, text_widget: tk.Text, log_file="daily_reporter.log"):
@@ -67,8 +67,6 @@ def normalize_date(date_str: str) -> str:
         return text
         
     return "" # Return empty if failed
-
-from datetime import datetime, timedelta
 
 def is_date_fillable(target_date_str: str) -> bool:
     """
