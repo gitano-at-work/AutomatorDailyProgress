@@ -154,9 +154,13 @@ class DailyReporterApp:
         # --- LEFT COLUMN: Configuration ---
         config_frame = ttk.LabelFrame(left_col, text=" 📄 Dokumen & Akun ", padding="15")
         config_frame.pack(fill='both', expand=True)
+        
+        # White background wrapper for left section (matching right section)
+        config_inner = tk.Frame(config_frame, bg='white')
+        config_inner.pack(fill='both', expand=True)
 
         # Doc URL with helper
-        doc_frame = tk.Frame(config_frame, bg='white')
+        doc_frame = tk.Frame(config_inner, bg='white')
         doc_frame.pack(fill='x', pady=(0, 10))
         
         ttk.Label(doc_frame, text="Link Google Doc:").pack(anchor='w')
@@ -173,12 +177,15 @@ class DailyReporterApp:
         template_link.bind("<Button-1>", lambda e: self.open_url("https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"))
 
         # Username
-        ttk.Label(config_frame, text="Username (NIP):").pack(anchor='w', pady=(10, 2))
-        self.user_entry = ttk.Entry(config_frame, textvariable=self.username_var, font=('Segoe UI', 9))
+        username_frame = tk.Frame(config_inner, bg='white')
+        username_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Label(username_frame, text="Username (NIP):").pack(anchor='w', pady=(0, 2))
+        self.user_entry = ttk.Entry(username_frame, textvariable=self.username_var, font=('Segoe UI', 9))
         self.user_entry.pack(fill='x')
 
         # Password with show/hide toggle
-        pwd_frame = tk.Frame(config_frame, bg='white')
+        pwd_frame = tk.Frame(config_inner, bg='white')
         pwd_frame.pack(fill='x', pady=(10, 0))
         
         ttk.Label(pwd_frame, text="Kata Sandi:").pack(anchor='w')
