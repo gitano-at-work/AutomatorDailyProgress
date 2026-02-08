@@ -8,7 +8,7 @@ class FormFiller:
 
     def open_form(self):
         """Opens the 'Tambah Progress Harian' modal."""
-        self.logger.log("Opening Form...")
+        self.logger.log("Membuka Form...")
         try:
             # Look for the green success button with the specific text
             self.page.wait_for_selector("button.btn-success:has-text('Tambah Progress Harian')", timeout=5000)
@@ -16,10 +16,10 @@ class FormFiller:
             
             # Wait for modal to appear (It is actually an h5, so use class only)
             self.page.wait_for_selector(".modal-title:has-text('Tambah Progress Harian')", state='visible', timeout=5000)
-            self.logger.log("✓ Form Modal Opened")
+            self.logger.log("✓ Modal Form Dibuka")
             return True
         except Exception as e:
-            self.logger.log(f"❌ Failed to open form: {e}")
+            self.logger.log(f"❌ Gagal membuka form: {e}")
             return False
 
     def fill_entry(self, entry: dict, doc_url: str):
@@ -32,7 +32,7 @@ class FormFiller:
             'activity': '...'
         }
         """
-        self.logger.log(f"Filling entry for {entry.get('date')}...")
+        self.logger.log(f"Mengisi entri untuk {entry.get('date')}...")
         
         try:
             # 1. Rencana Aksi
@@ -57,7 +57,7 @@ class FormFiller:
                     if action_plan.isdigit():
                         # INDEX BASED SELECTION (User Convention: "1" -> First Option)
                         idx = int(action_plan) - 1 # 0-based
-                        self.logger.log(f"  > Selecting Option #{action_plan} (Index {idx})...")
+                        self.logger.log(f"  > Memilih Opsi #{action_plan} (Indeks {idx})...")
                         
                         # Find all options. Usually .multiselect__element or li
                         # We use a broad logic: find the UL inside the container -> then LIs
@@ -71,22 +71,22 @@ class FormFiller:
                         
                         if options.count() > idx:
                             options.nth(idx).click()
-                            self.logger.log("  > Selected by Index.")
+                            self.logger.log("  > Dipilih berdasarkan Indeks.")
                         else:
-                            self.logger.log(f"  ⚠️ Index {idx} out of bounds (Found {options.count()} options).")
+                            self.logger.log(f"  ⚠️ Indeks {idx} di luar batas (Ditemukan {options.count()} opsi).")
                             
                     else:
                         # TEXT BASED SELECTION
                         option_selector = f"li:has-text('{action_plan}')"
                         if self.page.is_visible(option_selector):
                             self.page.click(option_selector)
-                            self.logger.log("  > Selected by Text.")
+                            self.logger.log("  > Dipilih berdasarkan Teks.")
                         else:
                             self.page.locator(f"span:text('{action_plan}')").first.click()
-                            self.logger.log("  > Selected via span match.")
+                            self.logger.log("  > Dipilih via span match.")
                         
                 except Exception as ex:
-                    self.logger.log(f"  ⚠️ Could not select plan: {ex}")
+                    self.logger.log(f"  ⚠️ Tidak dapat memilih rencana: {ex}")
                     self.page.keyboard.press("Escape")
             else:
                 self.logger.log("No Rencana Aksi specified in Doc. Skipping (Default).")
@@ -104,7 +104,7 @@ class FormFiller:
             self._fill_date_time(end_selector, entry['end_time'], "End Time")
 
             # 5. Kegiatan Harian
-            self.logger.log(f"Filling Activity: '{entry.get('category', 'N/A')}'")
+            self.logger.log(f"Mengisi Kegiatan: '{entry.get('category', 'N/A')}'")
             self.page.fill('input[name="kegiatan"]', entry['category'])
 
             # 6. Realisasi (Volume = 1, Satuan via config/default?)
@@ -113,14 +113,14 @@ class FormFiller:
             self.page.fill('input[name="realisasi_activity"]', "1")
             
             # 7. Bukti Dukung
-            self.logger.log("Filling Proof URL...")
+            self.logger.log("Mengisi URL Bukti...")
             self.page.fill('input[name="bukti_eviden"]', doc_url)
 
-            self.logger.log("✓ Entry Filled")
+            self.logger.log("✓ Entri Terisi")
             return True
 
         except Exception as e:
-            self.logger.log(f"❌ Error filling form: {e}")
+            self.logger.log(f"❌ Error mengisi form: {e}")
             return False
             
     def _fill_date_time(self, selector, value, label):
@@ -133,12 +133,12 @@ class FormFiller:
                 formatted_value = value
 
             # Attempt: Click to focus, then Type (better for masked inputs)
-            self.logger.log(f"  > Typing {label}: {formatted_value} into {selector}...")
+            self.logger.log(f"  > Mengetik {label}: {formatted_value} ke {selector}...")
             
             # Ensure visible
             element = self.page.locator(selector).first
             if not element.is_visible():
-                self.logger.log(f"  ⚠️ Field {label} hidden/not found")
+                self.logger.log(f"  ⚠️ Field {label} tersembunyi/tidak ditemukan")
                 return
 
             element.click()
@@ -155,11 +155,11 @@ class FormFiller:
             self.page.keyboard.press("Tab") # Trigger blur
             
         except Exception as e:
-            self.logger.log(f"  ⚠️ Error setting {label}: {e}")
+            self.logger.log(f"  ⚠️ Error mengatur {label}: {e}")
 
     def submit_form(self):
         """Submits the form."""
-        self.logger.log("Submitting form...")
+        self.logger.log("Mengirim form...")
         try:
             # Find the OK button in modal footer
             # Logic: Valid OK button is usually 'btn-primary' and has text 'OK' and is VISIBLE
@@ -170,22 +170,22 @@ class FormFiller:
             
             if submit_btn.count() > 0:
                 submit_btn.first.click()
-                self.logger.log("  > Clicked OK.")
+                self.logger.log("  > Klik OK.")
                 
                 # Validation: Wait for modal to disappear??
                 # Or wait for success toast?
                 time.sleep(2) 
                 return True
             else:
-                self.logger.log("  ❌ Could not find SUBMIT (OK) button!")
+                self.logger.log("  ❌ Tidak dapat menemukan tombol SUBMIT (OK)!")
                 # Fallback: Try generic footer selector
                 try:
                     self.page.click("//div[contains(@class, 'modal-footer')]//button[contains(text(), 'OK')]")
-                    self.logger.log("  > Clicked OK (Fallback).")
+                    self.logger.log("  > Klik OK (Fallback).")
                     return True
                 except:
                     return False
 
         except Exception as e:
-            self.logger.log(f"❌ Error submitting: {e}")
+            self.logger.log(f"❌ Error mengirim: {e}")
             return False

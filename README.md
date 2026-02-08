@@ -1,26 +1,26 @@
-# Daily Progress Reporter
+# Pelapor Kinerja Harian
 
-Automates filling out daily progress reports from a Google Doc.
+Mengotomatisasi pengisian laporan kinerja harian dari Google Doc.
 
-## Setup
+## Persiapan
 
 1.  **Install Python 3.8+**
-2.  Run `run.bat` (This will set up the virtual environment and install dependencies automatically).
+2.  Jalankan `run.bat` (Ini akan mengatur virtual environment dan menginstall dependensi secara otomatis).
 
-## Usage
+## Cara Penggunaan
 
-1.  Enter your Google Doc URL (must be accessible to you).
-2.  Enter your Web App Username and Password.
-3.  Click **Start Automation**.
-4.  A browser will open.
-5.  If 2FA is required, the automation will PAUSE. Enter your 2FA code in the browser manually.
-6.  Once logged in (dashboard detected), the automation will continue (in future phases).
-7.  For now (Phase 1), the browser will close after login verification.
+1.  Masukkan URL Google Doc Anda (harus dapat diakses oleh Anda).
+2.  Masukkan Username dan Password Web App Anda.
+3.  Klik **Start Automation**.
+4.  Browser akan terbuka.
+5.  Jika 2FA diperlukan, otomatisasi akan DIJEDA. Masukkan kode 2FA Anda di browser secara manual.
+6.  Setelah login (dashboard terdeteksi), otomatisasi akan berlanjut (di fase mendatang).
+7.  Untuk saat ini (Fase 1), browser akan ditutup setelah verifikasi login.
 
-## Configuration
+## Konfigurasi
 
-Settings are saved in `config.json` automatically.
+Pengaturan disimpan di `config.json` secara otomatis.
 
-## Security Note
+## Catatan Keamanan
 
-Passwords are currently stored in `config.json` in plain text. Do not share this file.
+Password saat ini disimpan di `config.json` dalam bentuk plain text. Jangan bagikan file ini.

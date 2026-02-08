@@ -403,7 +403,7 @@ class DailyReporterApp:
         self.log_text.config(state='normal')
         self.log_text.delete(1.0, tk.END)
         self.log_text.config(state='disabled')
-        self.logger.log("Log cleared.", 'info')
+        self.logger.log("Log dibersihkan.", 'info')
 
     def open_url(self, url):
         import webbrowser
@@ -508,7 +508,7 @@ class DailyReporterApp:
 
     def run_process(self):
         try:
-            self.logger.log("🚀 Initializing automation...", 'info')
+            self.logger.log("🚀 Memulai otomatisasi...", 'info')
             
             # Initialize Browser
             browser = BrowserController(self.logger, self.config)
@@ -524,13 +524,13 @@ class DailyReporterApp:
             
             # Post-Login Navigation
             if not browser.navigate_to_dashboard():
-                self.logger.log("❌ Failed to navigate to Kinerja dashboard.", 'error')
+                self.logger.log("❌ Gagal navigasi ke dashboard Kinerja.", 'error')
                 self.finish_process(browser)
                 return
             
             # Smart Calendar Navigation
             if not browser.navigate_to_calendar():
-                self.logger.log("❌ Failed to reach Calendar page.", 'error')
+                self.logger.log("❌ Gagal mencapai halaman Kalender.", 'error')
                 self.finish_process(browser)
                 return
             
@@ -545,7 +545,7 @@ class DailyReporterApp:
                 
             doc_text = browser.get_doc_text()
             if not doc_text:
-                self.logger.log("❌ Failed to get document text.", 'error')
+                self.logger.log("❌ Gagal mendapatkan teks dokumen.", 'error')
                 self.finish_process(browser)
                 return
 
@@ -612,7 +612,7 @@ class DailyReporterApp:
             self.logger.log(f"✓ {len(entries_to_fill)} entries identified for filling.", 'success')
 
             if not entries_to_fill:
-                self.logger.log("✅ Nothing to fill! Use force mode if needed.", 'success')
+                self.logger.log("✅ Tidak ada yang perlu diisi! Gunakan mode paksa jika diperlukan.", 'success')
                 self.finish_process(browser, keep_open=self.keep_browser_var.get())
                 return
 
@@ -635,28 +635,28 @@ class DailyReporterApp:
                     break
                 
                 if filler.submit_form():
-                    self.logger.log("✓ Entry Submitted.", 'success')
+                    self.logger.log("✓ Entri Dikirim.", 'success')
                     time.sleep(3)
                 else:
-                    self.logger.log("❌ Submit failed. Stopping loop.", 'error')
+                    self.logger.log("❌ Pengiriman gagal. Menghentikan loop.", 'error')
                     break
             
             self.logger.log("=" * 60, 'info')
-            self.logger.log("🎉 Phase 2 Complete.", 'success')
+            self.logger.log("🎉 Fase 2 Selesai.", 'success')
             
             if self.keep_browser_var.get():
-                self.logger.log("Browser will remain open.", 'info')
+                self.logger.log("Browser akan tetap terbuka.", 'info')
                 self.root.after(0, lambda: self.reset_ui())
             else:
-                self.logger.log("Closing browser...", 'info')
+                self.logger.log("Menutup browser...", 'info')
                 self.finish_process(browser, keep_open=False)
             
         except Exception as e:
-            self.logger.log(f"❌ CRITICAL ERROR: {str(e)}", 'error')
+            self.logger.log(f"❌ ERROR KRITIS: {str(e)}", 'error')
             import traceback
             self.logger.log(traceback.format_exc(), 'error')
             # Don't close on error
-            self.logger.log("Process paused due to error.", 'warning')
+            self.logger.log("Proses dijeda karena error.", 'warning')
 
     def finish_process(self, browser, keep_open=False):
         if browser and not keep_open:
@@ -666,7 +666,7 @@ class DailyReporterApp:
     def reset_ui(self):
         self.start_btn.config(state='normal', text="▶  Start Automation", bg="#28a745")
         self.update_status("Ready | Process finished")
-        self.logger.log("Process finished.", 'info')
+        self.logger.log("Proses selesai.", 'info')
 
 if __name__ == "__main__":
     root = tk.Tk()

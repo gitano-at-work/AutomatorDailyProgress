@@ -124,28 +124,28 @@ class BrowserController:
             self.browser.close()
         if self.playwright:
             self.playwright.stop()
-        self.logger.log("Browser closed.")
+        self.logger.log("Browser ditutup.")
 
     def navigate_to_doc(self, url: str):
         """Navigates the doc tab to the Google Doc URL."""
         if not self.page_doc:
             return
             
-        self.logger.log(f"Navigating to Google Doc...")
+        self.logger.log(f"Membuka Google Doc...")
         
         # Retry loop for unstable connection
         for attempt in range(3):
             try:
-                self.logger.log(f"Loading Doc (Attempt {attempt+1}/3)...")
+                self.logger.log(f"Memuat Doc (Percobaan {attempt+1}/3)...")
                 # Using a very long timeout (3 mins)
                 self.page_doc.goto(url, timeout=180000, wait_until='domcontentloaded')
-                self.logger.log("✓ Google Doc loaded (DOM Ready)")
+                self.logger.log("✓ Google Doc dimuat (DOM Siap)")
                 return
             except Exception as e:
-                self.logger.log(f"⚠️ Error loading Doc (Attempt {attempt+1}): {str(e)}")
+                self.logger.log(f"⚠️ Error memuat Doc (Percobaan {attempt+1}): {str(e)}")
                 time.sleep(5) # Wait before retry
         
-        self.logger.log("❌ Failed to load Google Doc after 3 attempts")
+        self.logger.log("❌ Gagal memuat Google Doc setelah 3 percobaan")
 
     def login(self, auth_code=None):
         """Handles the login flow on the web app tab."""
@@ -156,7 +156,7 @@ class BrowserController:
         username = self.config.get('username')
         password = self.config.get('password')
         
-        self.logger.log(f"Navigating to Login Page: {login_url}")
+        self.logger.log(f"Membuka Halaman Login: {login_url}")
         try:
             self.page_app.bring_to_front()
             self.page_app.goto(login_url)
@@ -170,10 +170,10 @@ class BrowserController:
             # "Input details here..." was in PRD, so I'll try to find common ones.
             # Assuming: input[name="username"], input[name="password"]
             
-            self.logger.log("Attempting to fill credentials...")
+            self.logger.log("Mencoba mengisi kredensial...")
             
             # 1. Open Login Modal on Landing Page
-            self.logger.log("Attempting to open login modal...")
+            self.logger.log("Mencoba membuka modal login...")
             # 1. Expand Main Menu
             # Logic: Check if "Majalah Digital BKN" (bottom menu item) is visible.
             # If so, menu is expanded. If not, hover/click '#start'.
@@ -181,16 +181,16 @@ class BrowserController:
             
             try:
                 if self.page_app.is_visible(majalah_selector):
-                    self.logger.log("Menu already expanded.")
+                    self.logger.log("Menu sudah terbuka.")
                 else:
-                    self.logger.log("Hovering main menu to expand...")
+                    self.logger.log("Mengarahkan kursor ke menu utama untuk membuka...")
                     self.page_app.hover('#start')
                     # Wait for expansion (Majalah button to appear)
                     try:
                         self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=2000)
-                        self.logger.log("✓ Menu expanded (Majalah detected)")
+                        self.logger.log("✓ Menu terbuka (Majalah terdeteksi)")
                     except:
-                        self.logger.log("⚠️ Menu expansion animation timeout. Trying click...")
+                        self.logger.log("⚠️ Animasi pembukaan menu timeout. Mencoba klik...")
                         self.page_app.click('#start')
                         time.sleep(1)
 
@@ -200,39 +200,39 @@ class BrowserController:
                 elif self.page_app.is_visible('#btn-layanan-login-mobile'):
                     self.page_app.click('#btn-layanan-login-mobile', force=True)
                 else:
-                    self.logger.log("Attempting fallback click for Login menu...")
+                    self.logger.log("Mencoba klik fallback untuk menu Login...")
                     # Fallback: force click specific text
                     self.page_app.click('text=Login', force=True)
                     
             except Exception as e:
-                self.logger.log(f"⚠️ Initial expand/click failed: {e}")
+                self.logger.log(f"⚠️ Pembukaan/klik awal gagal: {e}")
 
             # 2. Click 'Masuk' in Modal to redirect to SSO
-            self.logger.log("Waiting for 'Masuk' button...")
+            self.logger.log("Menunggu tombol 'Masuk'...")
             try:
                 self.page_app.wait_for_selector('#btn-login', state='visible', timeout=3000)
                 self.page_app.click('#btn-login')
             except Exception as e:
-                self.logger.log(f"⚠️ Error clicking Masuk: {e}")
+                self.logger.log(f"⚠️ Error mengklik Masuk: {e}")
 
             # 3. Wait for SSO Page Redirection
-            self.logger.log("Waiting for SSO page...")
+            self.logger.log("Menunggu halaman SSO...")
             try:
                 self.page_app.wait_for_url('**/sso-siasn.bkn.go.id/**', timeout=20000)
-                self.logger.log("✓ Redirected to SSO")
+                self.logger.log("✓ Dialihkan ke SSO")
             except Exception as e:
-                self.logger.log(f"⚠️ Redirection timeout or failed: {e}")
+                self.logger.log(f"⚠️ Pengalihan timeout atau gagal: {e}")
             
             # 4. Fill SSO Credentials
             if username and password:
-                self.logger.log("Filling SSO credentials...")
+                self.logger.log("Mengisi kredensial SSO...")
                 try:
                     self.page_app.wait_for_selector('input[name="username"]', state='visible', timeout=10000)
                     self.page_app.fill('input[name="username"]', username)
                     self.page_app.fill('input[name="password"]', password)
                     
                     # 5. Submit SSO Form
-                    self.logger.log("Submitting SSO form...")
+                    self.logger.log("Mengirim form SSO...")
                     
                     if self.page_app.is_visible('button[type="submit"]'):
                         self.page_app.click('button[type="submit"]')
@@ -241,37 +241,37 @@ class BrowserController:
                     else:
                         self.page_app.press('input[name="password"]', 'Enter')
                     
-                    self.logger.log("✓ Credentials submitted")
+                    self.logger.log("✓ Kredensial dikirim")
                     
                     # --- AUTO-FILL 2FA (Experimental) ---
                     if auth_code and auth_code.strip():
-                        self.logger.log(f"⏳ Attempting Auto-2FA with code: {auth_code}")
+                        self.logger.log(f"⏳ Mencoba Auto-2FA dengan kode: {auth_code}")
                         try:
                             otp_selector = 'input[name="otp"], input[id="otp"], input[id="totp"]'
                             self.page_app.wait_for_selector(otp_selector, state='visible', timeout=5000)
                             
                             self.page_app.fill(otp_selector, auth_code)
-                            self.logger.log("  > OTP Code Filled.")
+                            self.logger.log("  > Kode OTP Terisi.")
                             
                             if self.page_app.is_visible('#kc-login'):
                                 self.page_app.click('#kc-login')
                             elif self.page_app.is_visible('button[type="submit"]'):
                                 self.page_app.click('button[type="submit"]')
                             
-                            self.logger.log("  > OTP Submitted. Handing off to validation...")
+                            self.logger.log("  > OTP Dikirim. Menyerahkan ke validasi...")
                         except Exception as e:
-                            self.logger.log(f"⚠️ Auto-2FA failed (Field not found/Error): {e}")
+                            self.logger.log(f"⚠️ Auto-2FA gagal (Field tidak ditemukan/Error): {e}")
                     
                 except Exception as e:
-                    self.logger.log(f"⚠️ Error filling/submitting SSO: {e}")
+                    self.logger.log(f"⚠️ Error mengisi/mengirim SSO: {e}")
             else:
-                self.logger.log("ℹ️ Credentials not provided. Please login manually.")
+                self.logger.log("ℹ️ Kredensial tidak diberikan. Silakan login manual.")
                 
             # 2FA Pause Logic (Handles validation of success for both Manual and Auto)
             self.handler_2fa()
 
         except Exception as e:
-            self.logger.log(f"❌ Login specific error: {str(e)}")
+            self.logger.log(f"❌ Error spesifik login: {str(e)}")
             return # Stop if critical failure
 
     def navigate_to_dashboard(self):
@@ -279,7 +279,7 @@ class BrowserController:
         if not self.page_app:
             return
 
-        self.logger.log("Navigating to Kinerja Dashboard...")
+        self.logger.log("Membuka Dashboard Kinerja...")
         try:
             # Retry logic for dashboard navigation
             max_retries = 3
@@ -289,9 +289,9 @@ class BrowserController:
                     try:
                         majalah_selector = "span:has-text('Majalah Digital BKN')"
                         if self.page_app.is_visible(majalah_selector):
-                            self.logger.log("Menu already expanded.")
+                            self.logger.log("Menu sudah terbuka.")
                         elif self.page_app.is_visible('#start'):
-                            self.logger.log("Hovering main menu to expand...")
+                            self.logger.log("Mengarahkan kursor ke menu utama untuk membuka...")
                             self.page_app.hover('#start')
                             try:
                                 self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=2000)
@@ -302,13 +302,13 @@ class BrowserController:
                         pass
         
                     # 2. Click 'Layanan Individu ASN'
-                    self.logger.log("Clicking 'Layanan Individu ASN'...")
+                    self.logger.log("Mengklik 'Layanan Individu ASN'...")
                     self.page_app.wait_for_selector('#btn-layanan-individu', state='visible', timeout=10000)
                     self.page_app.click('#btn-layanan-individu')
                     
                     # 2. Click 'Kinerja'
                     # The user provided HTML shows it's an <a> tag with specific href and class
-                    self.logger.log("Clicking 'Kinerja'...")
+                    self.logger.log("Mengklik 'Kinerja'...")
                     kinerja_selector = 'a[href="https://kinerja.bkn.go.id/login"]'
                     self.page_app.wait_for_selector(kinerja_selector, state='visible', timeout=10000)
                     
@@ -319,24 +319,24 @@ class BrowserController:
                     with self.page_app.expect_navigation(url="**kinerja.bkn.go.id**", timeout=20000):
                         self.page_app.click(kinerja_selector)
                         
-                    self.logger.log("✓ Arrived at Kinerja Dashboard")
+                    self.logger.log("✓ Tiba di Dashboard Kinerja")
                     
                     # Update config URL if needed or just log current
-                    self.logger.log(f"Current URL: {self.page_app.url}")
+                    self.logger.log(f"URL Saat Ini: {self.page_app.url}")
                     return True
                 
                 except Exception as e:
-                    self.logger.log(f"⚠️ Navigation attempt {attempt+1}/{max_retries} failed: {str(e)}")
+                    self.logger.log(f"⚠️ Percobaan navigasi {attempt+1}/{max_retries} gagal: {str(e)}")
                     if attempt < max_retries - 1:
-                        self.logger.log("Retrying in 5 seconds...")
+                        self.logger.log("Mencoba lagi dalam 5 detik...")
                         time.sleep(5)
                         # Optional: Reload page to reset state?
                         # self.page_app.reload()
                     else:
-                        self.logger.log("❌ All navigation attempts failed.")
+                        self.logger.log("❌ Semua percobaan navigasi gagal.")
                         return False
         except Exception as e:
-            self.logger.log(f"❌ Critical Navigation Error: {e}")
+            self.logger.log(f"❌ Error Navigasi Kritis: {e}")
             return False
 
     def navigate_to_calendar(self):
@@ -349,7 +349,7 @@ class BrowserController:
         if not self.page_app:
             return False
             
-        self.logger.log("Verifying Calendar Page access...")
+        self.logger.log("Memverifikasi akses Halaman Kalender...")
         time.sleep(3) # Let redirects settle
         
         current_url = self.page_app.url
@@ -365,7 +365,7 @@ class BrowserController:
         elif 7 <= month <= 9: qtr = "TRIWULAN III"
         else: qtr = "TRIWULAN IV"
         
-        self.logger.log(f"Target Period: Year {current_year}, {qtr}")
+        self.logger.log(f"Periode Target: Tahun {current_year}, {qtr}")
 
         # CASE 2: Redirected to SKP List (URL contains '/skp' but not '/penilaian'?)
         # Or simply check for specific elements on the page
@@ -380,7 +380,7 @@ class BrowserController:
         except: pass
         
         if is_skp_page:
-            self.logger.log("⚠️ Redirected to SKP List. Navigating manually...")
+            self.logger.log("⚠️ Dialihkan ke Daftar SKP. Navigasi manual...")
             try:
                 # 1. Find Row with Current Year (e.g., "1 Januari 2026")
                 # We look for a row that has the year. Current hypothesis: text=2026
@@ -389,7 +389,7 @@ class BrowserController:
                 # We'll use a locator that finds the row containing the year, then the assessment button
                 # This is tricky without exact HTML, but trying text based chaining.
                 
-                self.logger.log(f"Looking for active SKP for {current_year}...")
+                self.logger.log(f"Mencari SKP aktif untuk {current_year}...")
                 
                 # Fallback strategy: Just click the first 'Penilaian' button? 
                 # User said "find the most latest". Usually the top one or bottom one.
@@ -411,7 +411,7 @@ class BrowserController:
                 # assuming the latest is usually at top.
                 # User said: "taking the Periode value and find the most current range"
                 
-                self.logger.log("Clicking 'Penilaian' for active period...")
+                self.logger.log("Mengklik 'Penilaian' untuk periode aktif...")
                 # We interpret "Penilaian" button.
                 # Using specific class from user image visual (blue outline button usually)
                 # Text is likely "Penilaian" or "Penilaian SKP"
@@ -420,10 +420,10 @@ class BrowserController:
                 self.page_app.click("a:has-text('Penilaian'), button:has-text('Penilaian')", force=True)
                 
                 self.page_app.wait_for_load_state('networkidle')
-                self.logger.log("✓ Entered Assessment (Penilaian) Page")
+                self.logger.log("✓ Masuk ke Halaman Penilaian")
                 
             except Exception as e:
-                self.logger.log(f"❌ Failed to click Penilaian: {e}")
+                self.logger.log(f"❌ Gagal mengklik Penilaian: {e}")
                 return False
 
         # CASE 2b: Now we are likely on Penilaian Page (or were already there)
@@ -435,14 +435,14 @@ class BrowserController:
             if "penilaian" in self.page_app.url or self.page_app.is_visible("text=Pelaksanaan Kinerja"):
                 
                 # STABILITY CHECK: Wait for the Quarter header to be visible
-                self.logger.log(f"Waiting for '{qtr}' section to load...")
+                self.logger.log(f"Menunggu bagian '{qtr}' dimuat...")
                 try:
                     self.page_app.wait_for_selector(f"text={qtr}", timeout=10000)
                     time.sleep(2) # Extra stability buffer as requested
                 except:
-                    self.logger.log("⚠️ Quarter text not found immediately, proceeding anyway...")
+                    self.logger.log("⚠️ Teks kuartal tidak langsung ditemukan, melanjutkan...")
 
-                self.logger.log(f"Looking for 'Progress Harian' button for {qtr}...")
+                self.logger.log(f"Mencari tombol 'Progress Harian' untuk {qtr}...")
                 
                 # Attempt to click specifically associated with the Quarter
                 # Using a broad locator that filters by text
@@ -453,18 +453,18 @@ class BrowserController:
                 
                 clicked = False
                 if self.page_app.is_visible(xpath_selector):
-                    self.logger.log("Clicking via XPath...")
+                    self.logger.log("Mengklik via XPath...")
                     self.page_app.click(xpath_selector)
                     clicked = True
                 else:
-                    self.logger.log("XPath selector not visible or invalid. Trying simplified locators...")
+                    self.logger.log("Selektor XPath tidak terlihat atau tidak valid. Mencoba selektor sederhana...")
                     # Attempt 2: Locator based on text "Progress Harian"
                     # We grab all of them, and if there's more than one, we might need logic.
                     # But usually the TOP one is the active one (Triwulan I).
                     
                     btn = self.page_app.locator("a", has_text="Progress Harian").first
                     if btn.is_visible():
-                        self.logger.log("Found 'Progress Harian' button (Generic). Clicking...")
+                        self.logger.log("Ditemukan tombol 'Progress Harian' (Generik). Mengklik...")
                         btn.click()
                         clicked = True
                     else:
@@ -476,34 +476,34 @@ class BrowserController:
                 
                 if clicked:
                     # Wait for navigation explicitly
-                    self.logger.log("Waiting for navigation to Calendar...")
+                    self.logger.log("Menunggu navigasi ke Kalender...")
                     try:
                         self.page_app.wait_for_url("**/kinerja_harian/**", timeout=15000)
                     except:
-                        self.logger.log("⚠️ URL didn't change quickly. Checking manually...")
+                        self.logger.log("⚠️ URL tidak berubah dengan cepat. Memeriksa manual...")
                         
         except Exception as e:
-            self.logger.log(f"⚠️ Error in Penilaian step: {e}")
+            self.logger.log(f"⚠️ Error di langkah Penilaian: {e}")
 
         # FINAL CHECK: Are we on Calendar page?
         # Image 1 shows "Progress Harian" header and a calendar view.
         try:
             time.sleep(2)
             if "progress" in self.page_app.url or self.page_app.is_visible("text=Total Jam Progress") or self.page_app.is_visible("text=Hari Ini"):
-                self.logger.log("✅ Successfully reached Calendar Page!")
-                self.logger.log(f"Calendar URL: {self.page_app.url}")
+                self.logger.log("✅ Berhasil mencapai Halaman Kalender!")
+                self.logger.log(f"URL Kalender: {self.page_app.url}")
                 return True
             else:
-                self.logger.log("❌ Could not confirm Calendar page.")
-                self.logger.log(f"Stuck at: {self.page_app.url}")
+                self.logger.log("❌ Tidak dapat mengkonfirmasi halaman Kalender.")
+                self.logger.log(f"Terjebak di: {self.page_app.url}")
                 return False
         except:
             return False
 
     def handler_2fa(self):
         """Waits for user to handle 2FA."""
-        self.logger.log("⏸️  PAUSED: Please complete 2FA manually on the browser.")
-        self.logger.log("Waiting for successful login (detecting URL change or dashboard)...")
+        self.logger.log("⏸️  DIJEDA: Silakan selesaikan 2FA secara manual di browser.")
+        self.logger.log("Menunggu login berhasil (mendeteksi perubahan URL atau dashboard)...")
         
         # In a real app we might look for specific elements. 
         # Here we'll wait for URL to NOT be the login URL or contain 'dashboard'/'home'
@@ -517,13 +517,13 @@ class BrowserController:
             
             start_time = time.time()
             initial_url = self.page_app.url
-            self.logger.log(f"Initial URL: {initial_url}")
+            self.logger.log(f"URL Awal: {initial_url}")
             
             while time.time() - start_time < 180: # 3 mins
                 # Check 1: "Selamat Datang" text (Strongest indicator)
                 try:
                     if self.page_app.is_visible("text=Selamat Datang"):
-                        self.logger.log("✅ Detected 'Selamat Datang'. Login successful!")
+                        self.logger.log("✅ Terdeteksi 'Selamat Datang'. Login berhasil!")
                         return True
                 except:
                     pass
@@ -533,7 +533,7 @@ class BrowserController:
                 current_url = self.page_app.url
                 if current_url != initial_url and 'sso-siasn' not in current_url and 'login' not in current_url:
                     # Double check we aren't just on a loading state
-                    self.logger.log(f"✅ Login appears successful! URL: {current_url}")
+                    self.logger.log(f"✅ Login tampaknya berhasil! URL: {current_url}")
                     return True
                     
                 time.sleep(1)
@@ -541,7 +541,7 @@ class BrowserController:
             self.logger.log("❌ 2FA/Login timeout.")
             return False
         except Exception as e:
-            self.logger.log(f"❌ Error during 2FA wait: {str(e)}")
+            self.logger.log(f"❌ Error saat menunggu 2FA: {str(e)}")
             return False
 
     def get_doc_text(self) -> str:
@@ -549,7 +549,7 @@ class BrowserController:
         if not self.page_doc:
             return ""
         
-        self.logger.log("Extracting text from Google Doc...")
+        self.logger.log("Mengekstrak teks dari Google Doc...")
         try:
             self.page_doc.bring_to_front()
             
@@ -562,7 +562,7 @@ class BrowserController:
             # We need to wait for the main editor container
             
             # Skipped waiting for network idle as per user request to speed up
-            self.logger.log("Assuming Doc is loaded (skipping strict waits)...")
+            self.logger.log("Menganggap Doc sudah dimuat (melewati penantian ketat)...")
             
             # Skipped waiting for specific selector
             # self.page_doc.wait_for_selector('.kix-appview-editor', timeout=10000)
@@ -574,32 +574,32 @@ class BrowserController:
             # Attempt to read 'body' text content via evaluate which sometimes captures a11y text better
             
             # STRATEGY: Scroll to Bottom to ensure recent entries (virtualized) are rendered
-            self.logger.log("Scrolling to bottom of Doc to ensure text matches...")
+            self.logger.log("Menggulir ke bawah Doc untuk memastikan teks cocok...")
             try:
                 self.page_doc.click('body') # Focus
                 self.page_doc.keyboard.press("Control+End")
                 time.sleep(3) # Wait for virtualized render
             except Exception as e:
-                self.logger.log(f"⚠️ Scroll failed: {e}")
+                self.logger.log(f"⚠️ Pengguliran gagal: {e}")
 
-            self.logger.log("Reading content...")
+            self.logger.log("Membaca konten...")
             
             # Simple body extraction after scroll is often best for a11y text
             content = self.page_doc.evaluate("document.body.innerText")
             
-            self.logger.log(f"✓ Extracted {len(content)} chars")
+            self.logger.log(f"✓ Diekstrak {len(content)} karakter")
             
             # If content is too short (just header), maybe wait more?
             # Or if it fails to get nodes, we might need to wait for render
             if len(content) < 200:
-                self.logger.log("⚠️ Content seems short. Waiting and retrying...")
+                self.logger.log("⚠️ Konten tampak pendek. Menunggu dan mencoba lagi...")
                 time.sleep(5)
                 # Retry with simple body access as safety net
                 content = self.page_doc.evaluate("document.body.innerText")
-                self.logger.log(f"✓ Retry extracted {len(content)} chars")
+                self.logger.log(f"✓ Percobaan ulang mengekstrak {len(content)} karakter")
             
             return content
             
         except Exception as e:
-            self.logger.log(f"❌ Error extracting doc text: {str(e)}")
+            self.logger.log(f"❌ Error mengekstrak teks doc: {str(e)}")
             return ""

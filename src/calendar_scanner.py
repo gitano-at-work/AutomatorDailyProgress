@@ -16,7 +16,7 @@ class CalendarScanner:
             '2026-02-06': [ {'start': '07:30', 'end': '13:00'}, ... ] 
         }
         """
-        self.logger.log("Scanning calendar for existing entries...")
+        self.logger.log("Memindai kalender untuk entri yang ada...")
         existing_data = {}
         
         try:
@@ -50,11 +50,11 @@ class CalendarScanner:
                 events = cell.locator(".vuecal__event").all()
                 
                 if not events:
-                    self.logger.log(f"  . Empty slot: {date_str}")
+                    self.logger.log(f"  . Slot kosong: {date_str}")
                     continue
                 
                 # Parse events
-                self.logger.log(f"  > Found {len(events)} entry(s) on {date_str}")
+                self.logger.log(f"  > Ditemukan {len(events)} entri pada {date_str}")
                 existing_data[date_str] = []
                 
                 for ev in events:
@@ -68,15 +68,15 @@ class CalendarScanner:
                         s_time = time_match.group(1).replace('.', ':') # normalize
                         e_time = time_match.group(2).replace('.', ':')
                         existing_data[date_str].append({'start': s_time, 'end': e_time})
-                        self.logger.log(f"    - Found time: {s_time} - {e_time}")
+                        self.logger.log(f"    - Ditemukan waktu: {s_time} - {e_time}")
                     else:
-                        self.logger.log(f"    - Found event but couldn't parse time: {ev_text[:20]}...")
+                        self.logger.log(f"    - Ditemukan event tapi tidak bisa parsing waktu: {ev_text[:20]}...")
                         # Assume full day checking? Or assume collision?
                         # Probably safest to mark simple presence if time fails
                         existing_data[date_str].append({'start': '?', 'end': '?'})
 
         except Exception as e:
-            self.logger.log(f"⚠️ Calendar scan failed: {e}")
+            self.logger.log(f"⚠️ Pemindaian kalender gagal: {e}")
             
         return existing_data
 
