@@ -6,3 +6,4 @@ build/
 daily_reporter.log
 doc_dump.txt
 doc_dump_fail.txt
+browsers/

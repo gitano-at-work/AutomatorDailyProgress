@@ -275,63 +275,153 @@ class BrowserController:
             return # Stop if critical failure
 
     def navigate_to_dashboard(self):
-        """Navigates from the portal to the specific Kinerja application."""
+        """
+        Navigates to the Kinerja/SKP page from ASN Digital portal.
+        Flow:
+        1. Hover on BKN logo (#start) to reveal menu buttons
+        2. Wait for "Majalah Digital BKN" to appear (menu expanded)
+        3. Click "Layanan Individu ASN" (#btn-layanan-individu)  
+        4. Click "Kinerja" in the submenu
+        5. On Kinerja page, find current year SKP and click Penilaian
+        """
         if not self.page_app:
-            return
-
-        self.logger.log("Membuka Dashboard Kinerja...")
+            return False
+            
+        max_retries = 3
+        
         try:
-            # Retry logic for dashboard navigation
-            max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    # 1. Expand Menu (Smart Hover)
-                    try:
-                        majalah_selector = "span:has-text('Majalah Digital BKN')"
-                        if self.page_app.is_visible(majalah_selector):
-                            self.logger.log("Menu sudah terbuka.")
-                        elif self.page_app.is_visible('#start'):
-                            self.logger.log("Mengarahkan kursor ke menu utama untuk membuka...")
-                            self.page_app.hover('#start')
-                            try:
-                                self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=2000)
-                            except:
-                                self.page_app.click('#start')
-                                time.sleep(1)
-                    except:
-                        pass
-        
-                    # 2. Click 'Layanan Individu ASN'
-                    self.logger.log("Mengklik 'Layanan Individu ASN'...")
-                    self.page_app.wait_for_selector('#btn-layanan-individu', state='visible', timeout=10000)
-                    self.page_app.click('#btn-layanan-individu')
+                    self.logger.log("Membuka Dashboard Kinerja...")
                     
-                    # 2. Click 'Kinerja'
-                    # The user provided HTML shows it's an <a> tag with specific href and class
-                    self.logger.log("Mengklik 'Kinerja'...")
-                    kinerja_selector = 'a[href="https://kinerja.bkn.go.id/login"]'
-                    self.page_app.wait_for_selector(kinerja_selector, state='visible', timeout=10000)
+                    # Wait for page to stabilize after login
+                    time.sleep(2)
                     
-                    # Note: This might open in a new tab if target="_blank" (not seen in snippet but possible)
-                    # or redirect current page. We assume redirect for now based on "move to another page".
+                    current_url = self.page_app.url
+                    self.logger.log(f"URL Saat Ini: {current_url}")
                     
-                    # Use expect_navigation or wait_for_url if it redirects
-                    with self.page_app.expect_navigation(url="**kinerja.bkn.go.id**", timeout=20000):
-                        self.page_app.click(kinerja_selector)
+                    # Check if we're on ASN Digital portal (need to navigate to Kinerja)
+                    if 'asndigital.bkn.go.id' in current_url and '/skp' not in current_url:
+                        # Step 1: Hover on BKN logo to reveal menu
+                        self.logger.log("Mengarahkan kursor ke logo BKN untuk membuka menu...")
                         
-                    self.logger.log("✓ Tiba di Dashboard Kinerja")
+                        # Wait for the start button to be visible
+                        start_btn = self.page_app.locator("#start")
+                        start_btn.wait_for(state='visible', timeout=10000)
+                        
+                        # Hover to reveal menu
+                        start_btn.hover()
+                        time.sleep(1)
+                        
+                        # Step 2: Wait for menu to expand (detected by Majalah Digital BKN appearing)
+                        majalah_selector = "span:has-text('Majalah Digital BKN'), #book-icon"
+                        try:
+                            self.page_app.wait_for_selector(majalah_selector, state='visible', timeout=5000)
+                            self.logger.log("✓ Menu terbuka")
+                        except Exception:
+                            # Try clicking the start button if hover doesn't work
+                            self.logger.log("⚠️ Menu tidak terbuka dengan hover, mencoba klik...")
+                            start_btn.click()
+                            time.sleep(1)
+                        
+                        # Step 3: Click "Layanan Individu ASN"
+                        self.logger.log("Mengklik 'Layanan Individu ASN'...")
+                        layanan_individu_btn = self.page_app.locator("#btn-layanan-individu")
+                        layanan_individu_btn.wait_for(state='visible', timeout=10000)
+                        layanan_individu_btn.click()
+                        time.sleep(2)
+                        
+                        # Step 4: Wait for navbar/submenu to appear and click Kinerja
+                        self.logger.log("Menunggu submenu muncul...")
+                        
+                        # Wait a moment for the navbar to become visible
+                        time.sleep(2)
+                        
+                        # Look for Kinerja link in the menu (should now be visible)
+                        self.logger.log("Mencari link 'Kinerja'...")
+                        kinerja_link = self.page_app.locator("#menu-individu a:has-text('Kinerja')").first
+                        
+                        # Wait for link to be visible
+                        kinerja_link.wait_for(state='visible', timeout=10000)
+                        
+                        self.logger.log("Mengklik 'Kinerja'...")
+                        kinerja_link.click()
+                        
+                        # Wait for navigation to complete
+                        time.sleep(3)
+                        self.page_app.wait_for_load_state('networkidle', timeout=30000)
+                        
+                        self.logger.log(f"✓ Navigasi ke Kinerja berhasil")
+                        self.logger.log(f"URL Saat Ini: {self.page_app.url}")
                     
-                    # Update config URL if needed or just log current
-                    self.logger.log(f"URL Saat Ini: {self.page_app.url}")
-                    return True
+                    # Now we should be on kinerja.bkn.go.id - check if we need to go to SKP/Penilaian
+                    current_url = self.page_app.url
+                    
+                    if 'kinerja.bkn.go.id' in current_url:
+                        # Wait for page to load
+                        self.page_app.wait_for_load_state('networkidle', timeout=15000)
+                        time.sleep(2)
+                        
+                        # Look for SKP page elements - find current year's SKP and click Penilaian
+                        import datetime
+                        current_year = str(datetime.datetime.now().year)
+                        self.logger.log(f"Mencari SKP untuk tahun {current_year}...")
+                        
+                        # Check if we're on SKP list or need to navigate there
+                        if '/skp' not in current_url:
+                            # Try to navigate to SKP via sidebar
+                            skp_link = self.page_app.locator("a.sidebar-link[href='/skp'], a[href='/skp']")
+                            if skp_link.count() > 0 and skp_link.first.is_visible():
+                                self.logger.log("Mengklik menu SKP di sidebar...")
+                                skp_link.first.click()
+                                self.page_app.wait_for_load_state('networkidle', timeout=10000)
+                                time.sleep(2)
+                        
+                        # Now find and click Penilaian for current year
+                        year_badge = self.page_app.locator(f".badge:has-text('{current_year}')")
+                        
+                        if year_badge.count() > 0:
+                            self.logger.log(f"✓ Ditemukan {year_badge.count()} periode SKP untuk {current_year}")
+                            
+                            penilaian_btns = self.page_app.locator("a:has-text('Penilaian')")
+                            
+                            if penilaian_btns.count() > 0:
+                                self.logger.log("Mengklik tombol 'Penilaian'...")
+                                penilaian_btns.first.click()
+                                self.page_app.wait_for_load_state('networkidle', timeout=15000)
+                                time.sleep(2)
+                                
+                                self.logger.log("✓ Tiba di Halaman Penilaian")
+                                self.logger.log(f"URL Saat Ini: {self.page_app.url}")
+                                return True
+                            else:
+                                self.logger.log("⚠️ Tombol 'Penilaian' tidak ditemukan")
+                        else:
+                            # Fallback: click any Penilaian button
+                            penilaian_btn = self.page_app.locator("a:has-text('Penilaian')").first
+                            if penilaian_btn.is_visible():
+                                self.logger.log("Mengklik tombol 'Penilaian' (fallback)...")
+                                penilaian_btn.click()
+                                self.page_app.wait_for_load_state('networkidle', timeout=15000)
+                                time.sleep(2)
+                                self.logger.log("✓ Tiba di Halaman Penilaian")
+                                return True
+                    
+                    # Check if we're already on the right page
+                    if '/penilaian' in self.page_app.url or '/skp' in self.page_app.url:
+                        self.logger.log("✓ Sudah berada di halaman yang benar")
+                        return True
+                    
+                    raise Exception("Tidak dapat menyelesaikan navigasi ke halaman Kinerja/Penilaian")
                 
                 except Exception as e:
                     self.logger.log(f"⚠️ Percobaan navigasi {attempt+1}/{max_retries} gagal: {str(e)}")
                     if attempt < max_retries - 1:
                         self.logger.log("Mencoba lagi dalam 5 detik...")
                         time.sleep(5)
-                        # Optional: Reload page to reset state?
-                        # self.page_app.reload()
+                        # Reload page to reset state
+                        self.page_app.reload()
+                        self.page_app.wait_for_load_state('networkidle', timeout=10000)
                     else:
                         self.logger.log("❌ Semua percobaan navigasi gagal.")
                         return False
