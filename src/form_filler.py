@@ -51,7 +51,7 @@ class FormFiller:
                     self.page.click(f"{dropdown_container}//input")
                 
                 # Wait for options visibility
-                self.page.wait_for_timeout(500) # Small buffer for animation
+                self.page.wait_for_timeout(300) # Small buffer for animation
 
                 try:
                     if action_plan.isdigit():
@@ -149,8 +149,10 @@ class FormFiller:
             # self.page.keyboard.press("Control+A")
             # self.page.keyboard.press("Backspace")
             
-            # Simulating human typing
-            self.page.keyboard.type(formatted_value, delay=100) 
+            # Clear field first, then type with faster delay
+            self.page.keyboard.press("Control+A")
+            self.page.keyboard.press("Delete")
+            self.page.keyboard.type(formatted_value, delay=30) 
             self.page.keyboard.press("Enter")
             self.page.keyboard.press("Tab") # Trigger blur
             
@@ -172,9 +174,11 @@ class FormFiller:
                 submit_btn.first.click()
                 self.logger.log("  > Klik OK.")
                 
-                # Validation: Wait for modal to disappear??
-                # Or wait for success toast?
-                time.sleep(2) 
+                # Wait for modal to close (smarter than fixed delay)
+                try:
+                    self.page.wait_for_selector(".modal[style*='display: none'], .modal:not(.show)", timeout=3000)
+                except:
+                    time.sleep(0.5)  # Fallback short wait
                 return True
             else:
                 self.logger.log("  ❌ Tidak dapat menemukan tombol SUBMIT (OK)!")

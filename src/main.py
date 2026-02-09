@@ -643,7 +643,7 @@ class DailyReporterApp:
                 
                 if filler.submit_form():
                     self.logger.log("✓ Entri Dikirim.", 'success')
-                    time.sleep(3)
+                    time.sleep(1)  # Reduced from 3s
                 else:
                     self.logger.log("❌ Pengiriman gagal. Menghentikan loop.", 'error')
                     break

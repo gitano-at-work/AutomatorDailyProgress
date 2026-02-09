@@ -605,7 +605,7 @@ class BrowserController:
                     self.logger.log(f"✅ Login tampaknya berhasil! URL: {current_url}")
                     return True
                     
-                time.sleep(1)
+                time.sleep(0.5)  # Faster polling for responsiveness
             
             self.logger.log("❌ 2FA/Login timeout.")
             return False

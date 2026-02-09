@@ -9,7 +9,7 @@ class CalendarScanner:
         self.page = page
         self.logger = logger
 
-    def get_existing_entries(self) -> dict:
+    def get_existing_entries(self, silent=False) -> dict:
         """
         Scans the generic Week View to find existing events with time ranges.
         Returns a dictionary mapping dates to list of time ranges:
@@ -17,7 +17,8 @@ class CalendarScanner:
             '2026-02-06': [ {'start': '07:30', 'end': '13:00'}, ... ] 
         }
         """
-        self.logger.log("Memindai kalender untuk entri yang ada...")
+        if not silent:
+            self.logger.log("Memindai kalender untuk entri yang ada...")
         existing_data = {}
         
         try:
@@ -86,10 +87,11 @@ class CalendarScanner:
         Scans BOTH current week AND previous week for existing entries.
         This ensures Friday entries are detected when running on Monday.
         """
+        self.logger.log("Memindai kalender (minggu ini + sebelumnya)...")
         existing = {}
         
         # 1. Scan current week first
-        current_week_entries = self.get_existing_entries()
+        current_week_entries = self.get_existing_entries(silent=True)
         existing.update(current_week_entries)
         
         # 2. Navigate to previous week
@@ -97,17 +99,17 @@ class CalendarScanner:
         try:
             prev_btn = self.page.locator("button.vuecal__arrow--prev")
             prev_btn.click()
-            time.sleep(1.5)  # Wait for calendar animation
+            time.sleep(1)  # Reduced from 1.5s
             
             # 3. Scan previous week
-            prev_week_entries = self.get_existing_entries()
+            prev_week_entries = self.get_existing_entries(silent=True)
             existing.update(prev_week_entries)
             
             # 4. Return to current week (today)
             self.logger.log("⏩ Kembali ke minggu ini...")
             today_btn = self.page.locator("button.vuecal__today-btn")
             today_btn.click()
-            time.sleep(1.5)
+            time.sleep(1)  # Reduced from 1.5s
             
         except Exception as e:
             self.logger.log(f"⚠️ Gagal scan minggu sebelumnya: {e}")
