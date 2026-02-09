@@ -585,7 +585,7 @@ class DailyReporterApp:
             from utils import is_date_fillable
             
             scanner = CalendarScanner(browser.page_app, self.logger)
-            existing_entries = scanner.get_existing_entries()
+            existing_entries = scanner.scan_with_previous_week()
             self.logger.log(f"ℹ️ Found entries on {len(existing_entries)} dates.", 'info')
 
             entries_to_fill = []

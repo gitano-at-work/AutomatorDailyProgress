@@ -2,6 +2,7 @@ from playwright.sync_api import Page
 from datetime import datetime
 from utils import Logger
 import re
+import time
 
 class CalendarScanner:
     def __init__(self, page: Page, logger: Logger):
@@ -79,6 +80,39 @@ class CalendarScanner:
             self.logger.log(f"⚠️ Pemindaian kalender gagal: {e}")
             
         return existing_data
+
+    def scan_with_previous_week(self) -> dict:
+        """
+        Scans BOTH current week AND previous week for existing entries.
+        This ensures Friday entries are detected when running on Monday.
+        """
+        existing = {}
+        
+        # 1. Scan current week first
+        current_week_entries = self.get_existing_entries()
+        existing.update(current_week_entries)
+        
+        # 2. Navigate to previous week
+        self.logger.log("⏪ Navigasi ke minggu sebelumnya...")
+        try:
+            prev_btn = self.page.locator("button.vuecal__arrow--prev")
+            prev_btn.click()
+            time.sleep(1.5)  # Wait for calendar animation
+            
+            # 3. Scan previous week
+            prev_week_entries = self.get_existing_entries()
+            existing.update(prev_week_entries)
+            
+            # 4. Return to current week (today)
+            self.logger.log("⏩ Kembali ke minggu ini...")
+            today_btn = self.page.locator("button.vuecal__today-btn")
+            today_btn.click()
+            time.sleep(1.5)
+            
+        except Exception as e:
+            self.logger.log(f"⚠️ Gagal scan minggu sebelumnya: {e}")
+        
+        return existing
 
     def _parse_month_year(self, text):
         # text: "Minggu 6 (Februari 2026)" or "Februari 2026" or "Januari 2024"
