@@ -32,7 +32,7 @@ class DailyReporterApp:
         self.username_var = tk.StringVar(value=self.config.get('username', ''))
         self.password_var = tk.StringVar(value=self.config.get('password', ''))
         self.auth_code_var = tk.StringVar()
-        self.keep_browser_var = tk.BooleanVar(value=self.config.get('keep_browser', False))
+        self.completion_mode = tk.IntVar(value=self.config.get('completion_mode', 2))
 
         # Screen management
         self.current_screen = None
@@ -234,10 +234,20 @@ class DailyReporterApp:
                               width=15, font=('Segoe UI', 11))
         auth_entry.pack(side='left', padx=(10, 0))
 
-        # Keep browser checkbox
-        ttk.Checkbutton(options_frame, 
-                       text="Biarkan browser terbuka setelah selesai", 
-                       variable=self.keep_browser_var).pack(anchor='w', pady=(10, 0))
+        # Completion mode selector
+        mode_label = tk.Label(options_frame, text="Setelah terisikan, maka...",
+                             font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
+        mode_label.pack(anchor='w', pady=(10, 5))
+        
+        ttk.Radiobutton(options_frame,
+            text="Biarkan browser dan aplikasi terbuka",
+            variable=self.completion_mode, value=1).pack(anchor='w', padx=(5, 0))
+        ttk.Radiobutton(options_frame,
+            text="Tutup browser, biarkan aplikasi terbuka",
+            variable=self.completion_mode, value=2).pack(anchor='w', padx=(5, 0))
+        ttk.Radiobutton(options_frame,
+            text="Tutup browser dan aplikasi",
+            variable=self.completion_mode, value=3).pack(anchor='w', padx=(5, 0))
 
         # --- ACTION BUTTON (centered, prominent) ---
         btn_container = tk.Frame(main_frame, bg="#f5f5f5")
@@ -561,7 +571,7 @@ class DailyReporterApp:
         self.config['last_doc_url'] = self.doc_url_var.get()
         self.config['username'] = self.username_var.get()
         self.config['password'] = self.password_var.get()
-        self.config['keep_browser'] = self.keep_browser_var.get()
+        self.config['completion_mode'] = self.completion_mode.get()
         
         # Ensure other keys exist (handled by load_config defaults, but safe to keep)
         
@@ -728,9 +738,15 @@ class DailyReporterApp:
             self.logger.log("=" * 60, 'info')
             self.logger.log("🎉 Fase 2 Selesai.", 'success')
             
-            if self.keep_browser_var.get():
-                self.logger.log("Browser akan tetap terbuka.", 'info')
+            mode = self.completion_mode.get()
+            if mode == 1:
+                self.logger.log("Browser dan aplikasi tetap terbuka.", 'info')
                 self.root.after(0, lambda: self.reset_ui())
+            elif mode == 3:
+                self.logger.log("Menutup browser dan aplikasi...", 'info')
+                if browser:
+                    browser.close_browser()
+                self.root.after(0, lambda: self.root.destroy())
             else:
                 self.logger.log("Menutup browser...", 'info')
                 self.finish_process(browser, keep_open=False)
