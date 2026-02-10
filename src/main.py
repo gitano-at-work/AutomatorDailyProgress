@@ -41,6 +41,9 @@ class DailyReporterApp:
         self.create_status_bar()
         
         # Show appropriate screen based on browser status
+        # Bind Enter key to start automation
+        self.root.bind('<Return>', lambda e: self.start_automation())
+        
         if self.is_browser_ready():
             self.show_main_screen()
         else:
@@ -86,6 +89,20 @@ class DailyReporterApp:
             background=BG_COLOR,
             font=('Segoe UI', 9, 'bold'),
             foreground='#333'
+        )
+        
+        # White-background variants for widgets inside white cards
+        style.configure('White.TLabel',
+            background='white',
+            font=('Segoe UI', 9)
+        )
+        
+        style.configure('White.TRadiobutton',
+            background='white',
+            font=('Segoe UI', 9)
+        )
+        style.map('White.TRadiobutton',
+            background=[('active', 'white')]
         )
 
     def create_menu(self):
@@ -162,15 +179,15 @@ class DailyReporterApp:
         config_frame = ttk.LabelFrame(left_col, text=" 📄 Dokumen & Akun ", padding="15")
         config_frame.pack(fill='both', expand=True)
         
-        # White background wrapper for left section (matching right section)
-        config_inner = tk.Frame(config_frame, bg='white')
+        # White background card for left section (bordered like 2FA card)
+        config_inner = tk.Frame(config_frame, bg='white', relief='solid', borderwidth=1)
         config_inner.pack(fill='both', expand=True)
 
         # Doc URL with helper
         doc_frame = tk.Frame(config_inner, bg='white')
-        doc_frame.pack(fill='x', pady=(0, 10))
+        doc_frame.pack(fill='x', padx=10, pady=(10, 10))
         
-        ttk.Label(doc_frame, text="Link Google Doc:").pack(anchor='w')
+        ttk.Label(doc_frame, text="Link Google Doc:", style='White.TLabel').pack(anchor='w')
         self.doc_entry = ttk.Entry(doc_frame, textvariable=self.doc_url_var, font=('Segoe UI', 9))
         self.doc_entry.pack(fill='x', pady=(2, 0))
         
@@ -185,17 +202,17 @@ class DailyReporterApp:
 
         # Username
         username_frame = tk.Frame(config_inner, bg='white')
-        username_frame.pack(fill='x', pady=(10, 0))
+        username_frame.pack(fill='x', padx=10, pady=(0, 10))
         
-        ttk.Label(username_frame, text="Username (NIP):").pack(anchor='w', pady=(0, 2))
+        ttk.Label(username_frame, text="Username (NIP):", style='White.TLabel').pack(anchor='w', pady=(0, 2))
         self.user_entry = ttk.Entry(username_frame, textvariable=self.username_var, font=('Segoe UI', 9))
         self.user_entry.pack(fill='x')
 
         # Password with show/hide toggle
         pwd_frame = tk.Frame(config_inner, bg='white')
-        pwd_frame.pack(fill='x', pady=(10, 0))
+        pwd_frame.pack(fill='x', padx=10, pady=(0, 10))
         
-        ttk.Label(pwd_frame, text="Kata Sandi:").pack(anchor='w')
+        ttk.Label(pwd_frame, text="Kata Sandi:", style='White.TLabel').pack(anchor='w')
         
         pwd_inner = tk.Frame(pwd_frame, bg='white')
         pwd_inner.pack(fill='x')
@@ -229,25 +246,31 @@ class DailyReporterApp:
         auth_entry_frame = tk.Frame(auth_info, bg='white')
         auth_entry_frame.pack(fill='x', padx=10, pady=(0, 10))
         
-        ttk.Label(auth_entry_frame, text="Kode OTP:").pack(side='left')
+        ttk.Label(auth_entry_frame, text="Kode OTP:", style='White.TLabel').pack(side='left')
         auth_entry = ttk.Entry(auth_entry_frame, textvariable=self.auth_code_var, 
                               width=15, font=('Segoe UI', 11))
         auth_entry.pack(side='left', padx=(10, 0))
 
-        # Completion mode selector
-        mode_label = tk.Label(options_frame, text="Setelah terisikan, maka...",
-                             font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
-        mode_label.pack(anchor='w', pady=(10, 5))
+        # Completion mode selector (bordered card like 2FA)
+        mode_card = tk.Frame(options_frame, bg='white', relief='solid', borderwidth=1)
+        mode_card.pack(fill='x', pady=(10, 0))
         
-        ttk.Radiobutton(options_frame,
+        mode_label = tk.Label(mode_card, text="Setelah terisikan, maka...",
+                             font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
+        mode_label.pack(anchor='w', padx=10, pady=(10, 5))
+        
+        ttk.Radiobutton(mode_card,
             text="Biarkan browser dan aplikasi terbuka",
-            variable=self.completion_mode, value=1).pack(anchor='w', padx=(5, 0))
-        ttk.Radiobutton(options_frame,
+            variable=self.completion_mode, value=1,
+            style='White.TRadiobutton').pack(anchor='w', padx=(15, 10))
+        ttk.Radiobutton(mode_card,
             text="Tutup browser, biarkan aplikasi terbuka",
-            variable=self.completion_mode, value=2).pack(anchor='w', padx=(5, 0))
-        ttk.Radiobutton(options_frame,
+            variable=self.completion_mode, value=2,
+            style='White.TRadiobutton').pack(anchor='w', padx=(15, 10))
+        ttk.Radiobutton(mode_card,
             text="Tutup browser dan aplikasi",
-            variable=self.completion_mode, value=3).pack(anchor='w', padx=(5, 0))
+            variable=self.completion_mode, value=3,
+            style='White.TRadiobutton').pack(anchor='w', padx=(15, 10), pady=(0, 10))
 
         # --- ACTION BUTTON (centered, prominent) ---
         btn_container = tk.Frame(main_frame, bg="#f5f5f5")
