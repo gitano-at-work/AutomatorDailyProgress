@@ -257,7 +257,7 @@ class DailyReporterApp:
 
         # Completion mode selector (bordered card like 2FA)
         mode_card = tk.Frame(options_frame, bg='white', relief='solid', borderwidth=1)
-        mode_card.pack(fill='x', pady=(10, 0))
+        mode_card.pack(fill='x', pady=(0, 10))
         
         mode_label = tk.Label(mode_card, text="Setelah terisikan, maka...",
                              font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
@@ -277,8 +277,8 @@ class DailyReporterApp:
             style='White.TRadiobutton').pack(anchor='w', padx=(15, 10), pady=(0, 10))
 
         # --- UPDATE STATUS SECTION ---
-        self.update_card = tk.Frame(right_col, bg='white', relief='solid', borderwidth=1)
-        self.update_card.pack(fill='x', pady=(15, 0))
+        self.update_card = tk.Frame(options_frame, bg='white', relief='solid', borderwidth=1)
+        self.update_card.pack(fill='x', pady=(0, 10))
         
         update_header = tk.Label(self.update_card, text="📦 Pembaruan Aplikasi",
                                 font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
