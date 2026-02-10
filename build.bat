@@ -12,11 +12,23 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo 2. ensuring assets folder exists...
+echo 2. Auto-generating version from current date...
+:: Generate version as YYYY.MM.DD
+for /f "tokens=1-3 delims=/" %%a in ('%SystemRoot%\System32\wbem\wmic.exe os get localdatetime /value ^| find "="') do set DT=%%a
+set YEAR=%DT:~14,4%
+set MONTH=%DT:~18,2%
+set DAY=%DT:~20,2%
+set APP_VERSION=%YEAR%.%MONTH%.%DAY%
+echo    Version: %APP_VERSION%
+echo %APP_VERSION%> src\version.txt
+echo    Written to src\version.txt
+
+echo.
+echo 3. Ensuring assets folder exists...
 if not exist assets mkdir assets
 
 echo.
-echo 3. Building Executable with PyInstaller...
+echo 4. Building Executable with PyInstaller...
 echo    (This may take a few minutes, please wait...)
 echo.
 
@@ -38,14 +50,22 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+echo 5. Copying updater.bat to dist folder...
+copy /Y updater.bat dist\updater.bat >nul
+
+echo.
 echo ==========================================
-echo    BUILD SUCCESSFUL!
+echo    BUILD SUCCESSFUL!  (v%APP_VERSION%)
 echo ==========================================
 echo.
 echo Your executable is located in the 'dist' folder:
 echo   dist\DailyReporter.exe
+echo   dist\updater.bat
 echo.
-echo You can move this .exe anywhere, but keep 'config.json' 
-echo next to it if you want to persist settings.
+echo To release an update:
+echo   1. Create a GitHub Release with tag "v%APP_VERSION%"
+echo   2. Upload dist\DailyReporter.exe as a release asset
+echo.
+echo Keep 'config.json' next to the exe to persist settings.
 echo.
 pause

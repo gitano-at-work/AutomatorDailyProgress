@@ -7,9 +7,10 @@ import threading
 from browser_controller import BrowserController
 from utils import Logger, normalize_date, normalize_time
 from doc_parser import parse_google_doc_text
+from updater import get_current_version, check_for_update, download_update, apply_update
 
 CONFIG_FILE = 'config.json'
-APP_VERSION = "1.0.0"
+APP_VERSION = get_current_version()
 
 class DailyReporterApp:
     def __init__(self, root):
@@ -39,6 +40,9 @@ class DailyReporterApp:
         
         # Status bar at bottom (shared between screens)
         self.create_status_bar()
+        
+        # Update state
+        self.update_info = None  # Will hold (new_version, download_url)
         
         # Show appropriate screen based on browser status
         # Bind Enter key to start automation
@@ -271,6 +275,30 @@ class DailyReporterApp:
             text="Tutup browser dan aplikasi",
             variable=self.completion_mode, value=3,
             style='White.TRadiobutton').pack(anchor='w', padx=(15, 10), pady=(0, 10))
+
+        # --- UPDATE STATUS SECTION ---
+        self.update_card = tk.Frame(right_col, bg='white', relief='solid', borderwidth=1)
+        self.update_card.pack(fill='x', pady=(15, 0))
+        
+        update_header = tk.Label(self.update_card, text="📦 Pembaruan Aplikasi",
+                                font=("Segoe UI", 9, "bold"), bg='white', fg='#333')
+        update_header.pack(anchor='w', padx=10, pady=(10, 5))
+        
+        self.update_status_label = tk.Label(self.update_card,
+            text="⏳ Memeriksa pembaruan...",
+            font=("Segoe UI", 9), bg='white', fg='#888', justify='left')
+        self.update_status_label.pack(anchor='w', padx=10, pady=(0, 5))
+        
+        self.update_progress_label = tk.Label(self.update_card,
+            text="", font=("Segoe UI", 8), bg='white', fg='#666')
+        self.update_progress_label.pack(anchor='w', padx=10)
+        
+        # Container for the update button (shown only when update available)
+        self.update_btn_frame = tk.Frame(self.update_card, bg='white')
+        self.update_btn_frame.pack(fill='x', padx=10, pady=(5, 10))
+        
+        # Start checking for updates in background
+        threading.Thread(target=self._check_for_update_worker, daemon=True).start()
 
         # --- ACTION BUTTON (centered, prominent) ---
         btn_container = tk.Frame(main_frame, bg="#f5f5f5")
@@ -563,6 +591,116 @@ class DailyReporterApp:
     def update_status(self, text):
         """Update status bar"""
         self.status_label.config(text=f"Version {APP_VERSION}  |  {text}")
+
+    # --- AUTO-UPDATE METHODS ---
+    def _check_for_update_worker(self):
+        """Background thread: check GitHub for updates."""
+        result = check_for_update(APP_VERSION)
+        self.root.after(0, lambda: self._on_update_check_complete(result))
+
+    def _on_update_check_complete(self, result):
+        """Called on main thread after update check finishes."""
+        if result is None:
+            self.update_status_label.config(
+                text="✅ Aplikasi terbaru sudah terinstall,\n     tidak ada update baru.",
+                fg='#28a745'
+            )
+        else:
+            new_version, download_url = result
+            self.update_info = result
+            self.update_status_label.config(
+                text=f"🔄 Versi baru tersedia: v{new_version}\n     (Anda: v{APP_VERSION})",
+                fg='#e65100'
+            )
+            # Show the update button
+            update_btn = tk.Button(self.update_btn_frame,
+                text="⬇  Perbarui Sekarang",
+                command=self._start_download_update,
+                bg="#ff9800", fg="white",
+                font=("Segoe UI", 9, "bold"),
+                padx=15, pady=5, relief="flat", cursor="hand2")
+            update_btn.pack(fill='x')
+            update_btn.bind('<Enter>', lambda e: update_btn.config(bg="#e68900"))
+            update_btn.bind('<Leave>', lambda e: update_btn.config(bg="#ff9800"))
+
+    def _start_download_update(self):
+        """Start downloading the update."""
+        if not self.update_info:
+            return
+        
+        # Disable the button and clear it
+        for widget in self.update_btn_frame.winfo_children():
+            widget.destroy()
+        
+        self.update_status_label.config(
+            text="⬇️ Mengunduh pembaruan...",
+            fg='#1565c0'
+        )
+        self.update_progress_label.config(text="0%")
+        
+        _, download_url = self.update_info
+        threading.Thread(
+            target=self._download_update_worker,
+            args=(download_url,),
+            daemon=True
+        ).start()
+
+    def _download_update_worker(self, download_url):
+        """Background thread: download the update exe."""
+        def progress_cb(percent):
+            self.root.after(0, lambda p=percent: self.update_progress_label.config(
+                text=f"{'█' * (p // 5)}{'░' * (20 - p // 5)}  {p}%"
+            ))
+        
+        new_exe_path = download_update(download_url, progress_callback=progress_cb)
+        self.root.after(0, lambda: self._on_download_complete(new_exe_path))
+
+    def _on_download_complete(self, new_exe_path):
+        """Called on main thread after download finishes."""
+        if new_exe_path is None:
+            self.update_status_label.config(
+                text="❌ Gagal mengunduh pembaruan.\n     Coba lagi nanti.",
+                fg='#c62828'
+            )
+            self.update_progress_label.config(text="")
+            # Re-show the retry button
+            retry_btn = tk.Button(self.update_btn_frame,
+                text="🔄  Coba Lagi",
+                command=self._start_download_update,
+                bg="#ff9800", fg="white",
+                font=("Segoe UI", 9, "bold"),
+                padx=15, pady=5, relief="flat", cursor="hand2")
+            retry_btn.pack(fill='x')
+            return
+        
+        self.update_progress_label.config(text="")
+        self.update_status_label.config(
+            text="✅ Pembaruan siap! Aplikasi akan\n     ditutup dan dimulai ulang.",
+            fg='#28a745'
+        )
+        
+        # Ask for confirmation
+        confirm = messagebox.askyesno(
+            "Pembaruan Siap",
+            "Pembaruan telah diunduh.\n\n"
+            "Aplikasi perlu ditutup dan dibuka kembali\n"
+            "untuk menerapkan pembaruan.\n\n"
+            "Lanjutkan sekarang?"
+        )
+        
+        if confirm:
+            success = apply_update(new_exe_path, self.root)
+            if not success:
+                messagebox.showwarning(
+                    "Mode Pengembangan",
+                    "Pembaruan otomatis hanya bekerja pada versi .exe.\n"
+                    "File pembaruan tersimpan di: " + new_exe_path
+                )
+        else:
+            self.update_status_label.config(
+                text="⏸️ Pembaruan ditunda.\n     Akan diterapkan saat dibuka lagi.",
+                fg='#f57c00'
+            )
 
     def load_config(self):
         default_config = {

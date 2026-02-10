@@ -26,6 +26,9 @@ Laporan EKinerja Harian
 0830 - 1300 : Meeting pembahasan ISO surveilance 1
 1300 - 1500 : Meeting progress mingguan rapid dan anak magang 1
 1500 - 1600 : Pengerjaan coding eKerjasama 2
+10 Februari 2026
+0730 - 1100 : Pengecekan progress aplikasi Sengkuyung dan konfirmasi jadwal paparan 2
+1100 - 1600 : Pelanjutan pembuatan aplikasi 3
 Aktifkan dukungan pembaca layar
 Untuk mengaktifkan dukungan pembaca layar, tekan Ctrl+Alt+Z. Untuk mempelajari pintasan keyboard, tekan Ctrl+garis miring.
 Banner disembunyikan 
