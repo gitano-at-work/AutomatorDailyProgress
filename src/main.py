@@ -34,11 +34,17 @@ class DailyReporterApp:
         self.auth_code_var = tk.StringVar()
         self.keep_browser_var = tk.BooleanVar(value=self.config.get('keep_browser', False))
 
-        self.create_menu()
-        self.create_widgets()
+        # Screen management
+        self.current_screen = None
         
-        # Status bar at bottom
+        # Status bar at bottom (shared between screens)
         self.create_status_bar()
+        
+        # Show appropriate screen based on browser status
+        if self.is_browser_ready():
+            self.show_main_screen()
+        else:
+            self.show_setup_screen()
 
     def setup_style(self):
         """Modern styling with better colors"""
@@ -110,7 +116,8 @@ class DailyReporterApp:
 
     def create_widgets(self):
         # Main Container
-        main_frame = ttk.Frame(self.root, padding="20 20 20 10")
+        self.current_screen = ttk.Frame(self.root, padding="20 20 20 10")
+        main_frame = self.current_screen
         main_frame.pack(fill='both', expand=True)
 
         # Header with icon/logo space
@@ -279,108 +286,175 @@ class DailyReporterApp:
 
         self.logger = Logger(self.log_text)
         
-        # Initial Check
-        self.root.after(500, self.check_initial_state)
+        # Log ready state
+        self.logger.log("✓ Siap memulai otomatisasi", 'success')
 
-    def check_initial_state(self):
-        """Check if browser is installed and set UI mode."""
-        # Create a temp controller just to check
-        temp_browser = BrowserController(self.logger, self.config)
-        if temp_browser.is_browser_installed():
-            self.set_ready_mode()
-            self.logger.log("✓ Siap memulai otomatisasi", 'success')
-        else:
-            self.set_download_mode()
-            self.logger.log("⚠️ Browser belum terinstall. Silakan unduh terlebih dahulu.", 'warning')
-
-    def toggle_inputs(self, state):
-        """Enable or disable input fields."""
-        # state is 'normal' or 'disabled'
+    def is_browser_ready(self):
+        """Check if browser is already installed (no logger needed)."""
         try:
-            self.doc_entry.config(state=state)
-            self.user_entry.config(state=state)
-            self.pwd_entry.config(state=state)
-            self.show_pwd_btn.config(state=state)
-            # Template link is a label, no easy disable but it's harmless
+            class _NoOpLogger:
+                def log(self, *args, **kwargs): pass
+            temp_browser = BrowserController(_NoOpLogger(), self.config)
+            return temp_browser.is_browser_installed()
         except Exception:
-            pass # In case called before widgets init
+            return False
 
-    def set_download_mode(self):
-        """Disable inputs, set button to Download."""
-        self.toggle_inputs('disabled') # Gray out inputs
+    def show_setup_screen(self):
+        """Show minimalist setup screen for first-time users."""
+        if self.current_screen:
+            self.current_screen.destroy()
         
-        self.start_btn.config(
-            text="⬇ Unduh Browser Otomatis", 
-            command=self.start_download,
-            bg='#ff9800' # Orange for attention
-        )
-        self.update_status("Diperlukan instalasi browser")
-
-    def set_ready_mode(self):
-        """Enable inputs, set button to Start."""
-        self.toggle_inputs('normal') # Enable inputs
+        self.root.geometry("600x650")
         
-        self.start_btn.config(
-            text="🚀 Mulai Otomatisasi", 
-            command=self.start_automation,
-            bg='#4CAF50'
+        self.current_screen = ttk.Frame(self.root, padding="20 20 20 10")
+        self.current_screen.pack(fill='both', expand=True)
+        
+        # Header
+        header_frame = tk.Frame(self.current_screen, bg="#f5f5f5")
+        header_frame.pack(fill='x', pady=(0, 20))
+        
+        try:
+            from PIL import Image, ImageTk
+            if os.path.exists('assets/logo_small.png'):
+                logo_img = Image.open('assets/logo_small.png')
+                logo_img = logo_img.resize((48, 48), Image.LANCZOS)
+                logo_photo = ImageTk.PhotoImage(logo_img)
+                logo_label = tk.Label(header_frame, image=logo_photo, bg="#f5f5f5")
+                logo_label.image = logo_photo
+                logo_label.pack(side='left', padx=(0, 15))
+        except Exception:
+            pass
+        
+        title_frame = tk.Frame(header_frame, bg="#f5f5f5")
+        title_frame.pack(side='left', fill='both', expand=True)
+        
+        tk.Label(title_frame, text="Pelapor Kinerja Harian",
+                 font=("Segoe UI", 18, "bold"), fg="#222", bg="#f5f5f5").pack(anchor='w')
+        tk.Label(title_frame, text="Otomatisasi laporan kinerja harian eKinerja BKN",
+                 font=("Segoe UI", 9), fg="#666", bg="#f5f5f5").pack(anchor='w')
+        
+        # Description card
+        desc_frame = tk.Frame(self.current_screen, bg='white', relief='solid', borderwidth=1)
+        desc_frame.pack(fill='x', pady=(0, 20))
+        
+        desc_text = (
+            "Selamat datang! Aplikasi ini membantu Anda mengisi\n"
+            "laporan kinerja harian secara otomatis dari Google Docs.\n\n"
+            "Sebelum memulai, Anda perlu:\n"
+            "  1. Unduh format dokumen Google Docs\n"
+            "  2. Install browser otomatis (~400MB, sekali saja)"
         )
-        self.update_status("Siap")
+        tk.Label(desc_frame, text=desc_text,
+                 font=("Segoe UI", 10), bg='white', fg='#333',
+                 justify='left', padx=20, pady=20).pack(anchor='w')
+        
+        # Buttons
+        btn_frame = tk.Frame(self.current_screen, bg="#f5f5f5")
+        btn_frame.pack(fill='x', pady=(0, 15))
+        
+        guide_btn = tk.Button(btn_frame,
+            text="📥  Panduan dan Unduh Format",
+            command=lambda: self.open_url(
+                "https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"
+            ),
+            bg="#0066CC", fg="white",
+            font=("Segoe UI", 11, "bold"),
+            padx=20, pady=10, relief="flat", cursor="hand2")
+        guide_btn.pack(fill='x', pady=(0, 8))
+        guide_btn.bind('<Enter>', lambda e: guide_btn.config(bg="#0052A3"))
+        guide_btn.bind('<Leave>', lambda e: guide_btn.config(bg="#0066CC"))
+        
+        self.setup_install_btn = tk.Button(btn_frame,
+            text="⬇  Install Browser (~400MB)",
+            command=self.start_setup_download,
+            bg="#ff9800", fg="white",
+            font=("Segoe UI", 11, "bold"),
+            padx=20, pady=10, relief="flat", cursor="hand2")
+        self.setup_install_btn.pack(fill='x')
+        self.setup_install_btn.bind('<Enter>', lambda e: self.setup_install_btn.config(bg="#e68900"))
+        self.setup_install_btn.bind('<Leave>', lambda e: self.setup_install_btn.config(bg="#ff9800"))
+        
+        # Log area
+        log_frame = ttk.LabelFrame(self.current_screen, text=" 📋 Log Aktivitas ", padding="10")
+        log_frame.pack(fill='both', expand=True, pady=(10, 0))
+        
+        self.log_text = scrolledtext.ScrolledText(
+            log_frame, height=10, state='disabled',
+            bg="#1e1e1e", fg="#d4d4d4",
+            font=("Consolas", 9), relief="flat", wrap='word')
+        self.log_text.pack(fill='both', expand=True)
+        
+        self.log_text.tag_config('success', foreground='#4ec9b0')
+        self.log_text.tag_config('error', foreground='#f48771')
+        self.log_text.tag_config('warning', foreground='#dcdcaa')
+        self.log_text.tag_config('info', foreground='#569cd6')
+        
+        self.logger = Logger(self.log_text)
+        self.logger.log("👋 Selamat datang! Silakan install browser terlebih dahulu.", 'info')
+        self.update_status("Setup diperlukan")
 
-    def start_download(self):
-        """Start download thread."""
-        self.start_btn.config(state='disabled', text="⏳ Mengunduh...", bg='#6c757d')
-        threading.Thread(target=self._download_worker, daemon=True).start()
+    def show_main_screen(self):
+        """Show the main application screen (after browser installed)."""
+        if self.current_screen:
+            self.current_screen.destroy()
+        
+        self.root.geometry("750x780")
+        self.create_menu()
+        self.create_widgets()
 
-    def _download_worker(self):
+    def start_setup_download(self):
+        """Start browser download from setup screen."""
+        self.setup_install_btn.config(state='disabled', text="⏳ Mengunduh...", bg='#6c757d')
+        self.update_status("Mengunduh browser...")
+        threading.Thread(target=self._setup_download_worker, daemon=True).start()
+
+    def _setup_download_worker(self):
+        """Download worker for setup screen — closes app after success."""
         browser = BrowserController(self.logger, self.config)
         self.logger.log("⬇️ Memulai unduhan... (Sekitar 400MB)", 'info')
-        self.logger.log("   Mohon tunggu, tergantung kecepatan internet Anda. Proses ini hanya dilakukan sekali saja, setelah install tidak perlu menunggu lagi", 'info')
+        self.logger.log("   Mohon tunggu, tergantung kecepatan internet Anda.", 'info')
+        self.logger.log("   Proses ini hanya dilakukan sekali saja.", 'info')
         
         try:
-            # Custom ASCII Progress Bar Logic
-            # Since real parsing is hard, we simulate a 'beat' bar based on output activity
-            # Or assume roughly 10 steps if we can guess.
-            # Simple approach: Just print/update a bar line for every chunk of output.
-            
+            import re as _re
             progress = 0
             
             for line in browser.install_browser():
-                # Try to detect percentage in line (e.g. "34%")
-                import re
-                match = re.search(r'(\d+)%', line)
+                match = _re.search(r'(\d+)%', line)
                 if match:
                     try:
-                        pct = int(match.group(1))
-                        progress = pct
-                    except: 
+                        progress = int(match.group(1))
+                    except:
                         pass
                 else:
-                    # If no percentage, just increment slowly to show activity
-                    progress = (progress + 5) % 100
+                    progress = min(progress + 5, 99)
                 
-                # Render ASCII Bar: |==========          | 50%
                 bar_len = 30
                 filled = int(bar_len * progress / 100)
                 bar = "|" + "=" * filled + " " * (bar_len - filled) + "|"
                 
-                # We log this as a status update
-                # Since Logger appends, we can't replace lines easily. 
-                # So we ONLY log the bar if it changes significantly or just the status line.
-                # Actually, appending many bars is spammy. 
-                # Let's just log key updates or a compact bar.
                 if '%' in line:
                     self.logger.log(f"{bar} {progress}%")
                 else:
-                    # For non-percentage lines (like "Downloading..."), just log the text
                     self.logger.log(f"   {line}")
-                
+            
             self.logger.log("|" + "=" * 30 + "| 100%")
-            self.logger.log("✅ Unduhan & Instalasi Selesai! Tutup aplikasi ini lalu buka lagi", 'success')
-            self.root.after(0, self.set_ready_mode)
+            self.logger.log("✅ Instalasi browser selesai!", 'success')
+            
+            def _show_success():
+                messagebox.showinfo(
+                    "Instalasi Berhasil",
+                    "Instalasi berhasil! Silakan tutup dan buka kembali aplikasi ini.\n\n"
+                    "Klik OK untuk menutup aplikasi."
+                )
+                self.root.destroy()
+            
+            self.root.after(0, _show_success)
+            
         except Exception as e:
             self.logger.log(f"❌ Gagal mengunduh: {e}", 'error')
-            self.root.after(0, lambda: self.start_btn.config(state='normal', text="⬇ Coba Lagi"))
+            self.root.after(0, lambda: self.setup_install_btn.config(
+                state='normal', text="⬇  Coba Lagi", bg='#ff9800'))
 
     def create_status_bar(self):
         """Bottom status bar"""
@@ -674,8 +748,8 @@ class DailyReporterApp:
         self.root.after(0, lambda: self.reset_ui())
 
     def reset_ui(self):
-        self.start_btn.config(state='normal', text="▶  Start Automation", bg="#28a745")
-        self.update_status("Ready | Process finished")
+        self.start_btn.config(state='normal', text="▶  Mulai Otomatisasi", bg="#28a745")
+        self.update_status("Siap | Proses selesai")
         self.logger.log("Proses selesai.", 'info')
 
 if __name__ == "__main__":
