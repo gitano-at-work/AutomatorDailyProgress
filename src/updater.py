@@ -17,11 +17,19 @@ GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 def get_current_version():
     """Read the current version from version.txt."""
-    version_paths = [
+    version_paths = []
+    
+    # PyInstaller frozen exe: bundled data is in sys._MEIPASS
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        version_paths.append(os.path.join(meipass, 'src', 'version.txt'))
+    
+    # Running from source / fallbacks
+    version_paths.extend([
         os.path.join(os.path.dirname(__file__), 'version.txt'),
         os.path.join(os.path.dirname(sys.executable), 'src', 'version.txt'),
         os.path.join(os.path.dirname(sys.executable), 'version.txt'),
-    ]
+    ])
     
     for path in version_paths:
         if os.path.exists(path):
@@ -170,16 +178,19 @@ def apply_update(new_exe_path, root_window):
         return False
     
     try:
-        # Launch the batch script in a new console, detached from this process
+        # Launch the batch script as a separate process
+        # Note: CREATE_NEW_CONSOLE and DETACHED_PROCESS are mutually exclusive on Windows
+        # Use CREATE_NO_WINDOW so the batch runs silently in the background
         subprocess.Popen(
-            ['cmd', '/c', updater_bat, current_exe, new_exe_path],
-            creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.DETACHED_PROCESS,
-            close_fds=True
+            f'cmd /c "{updater_bat}" "{current_exe}" "{new_exe_path}"',
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            shell=False
         )
         
         # Close the app so the batch script can replace the exe
         root_window.after(500, root_window.destroy)
         return True
         
-    except Exception:
+    except Exception as e:
+        print(f"Update apply error: {e}")
         return False
