@@ -34,39 +34,87 @@ class Logger:
         except UnicodeEncodeError:
             print(full_message.encode('ascii', 'ignore').decode('ascii').strip())
 
+def normalize_time(time_str: str) -> str:
+    """
+    Normalize various time formats to HH:MM.
+    Handles: 0730, 07:30, 07.30, 7:30, 730, etc.
+    """
+    import re
+    t = time_str.strip().replace('.', ':')
+    
+    # Already HH:MM format
+    match = re.match(r'^(\d{1,2}):(\d{2})$', t)
+    if match:
+        h, m = int(match.group(1)), int(match.group(2))
+        return f"{h:02d}:{m:02d}"
+    
+    # Pure digits: 0730, 730, 1300, etc.
+    digits = re.sub(r'\D', '', t)
+    if len(digits) == 4:
+        return f"{digits[:2]}:{digits[2:]}"
+    elif len(digits) == 3:
+        return f"0{digits[0]}:{digits[1:]}"
+    
+    return time_str  # Return as-is if unparseable
+
 def normalize_date(date_str: str) -> str:
     """
     Convert various date formats to YYYY-MM-DD.
-    Input examples:
-        - "2 Februari 2026" (Indonesian)
-        - "2026-02-02" (ISO)
+    Handles:
+        - "2 Februari 2026" / "01 Januari 2026" (Indonesian)
+        - "2 February 2026" / "1 Jan 2026" (English)
+        - "2026-02-01" / "2026/02/01" (ISO)
+        - "01/02/2026" / "1-2-2026" (DD/MM/YYYY)
+        - "1 1 2026" (D M YYYY numeric)
     """
     import re
-    # Indonesian month mapping
-    indo_months = {
+    
+    # Month name mapping (Indonesian + English + abbreviations)
+    month_map = {
+        # Indonesian
         'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
         'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
         'september': 9, 'oktober': 10, 'november': 11, 'desember': 12,
-        # Short forms just in case (though not in PRD)
-        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7, 
-        'agu': 8, 'sep': 9, 'okt': 10, 'nov': 11, 'des': 12
+        # Indonesian short
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7,
+        'agu': 8, 'ags': 8, 'sep': 9, 'okt': 10, 'nov': 11, 'des': 12,
+        # English
+        'january': 1, 'february': 2, 'march': 3, 'may': 5,
+        'june': 6, 'july': 7, 'august': 8, 'october': 10,
+        'december': 12,
+        # English short
+        'aug': 8, 'oct': 10, 'dec': 12,
     }
     
     text = date_str.lower().strip()
     
-    # Try Indonesian format first: "2 Februari 2026"
+    # 1. Named month: "2 Februari 2026" or "2 February 2026" or "01 Jan 2026"
     match = re.match(r'(\d{1,2})\s+([a-z]+)\s+(\d{4})', text)
     if match:
         day, month_name, year = match.groups()
-        month = indo_months.get(month_name)
+        month = month_map.get(month_name)
         if month:
             return f"{year}-{month:02d}-{int(day):02d}"
     
-    # Try ISO format
-    if re.match(r'\d{4}-\d{2}-\d{2}', text):
-        return text
+    # 2. ISO: "2026-02-01" or "2026/02/01"
+    match = re.match(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})$', text)
+    if match:
+        year, month, day = match.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+    
+    # 3. DD/MM/YYYY or DD-MM-YYYY: "01/02/2026" or "1-2-2026"
+    match = re.match(r'(\d{1,2})[-/](\d{1,2})[-/](\d{4})$', text)
+    if match:
+        day, month, year = match.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+    
+    # 4. Numeric with spaces: "1 1 2026"
+    match = re.match(r'(\d{1,2})\s+(\d{1,2})\s+(\d{4})$', text)
+    if match:
+        day, month, year = match.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d}"
         
-    return "" # Return empty if failed
+    return ""  # Return empty if all parsing failed
 
 def is_date_fillable(target_date_str: str) -> bool:
     """

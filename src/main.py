@@ -5,7 +5,7 @@ import json
 import os
 import threading
 from browser_controller import BrowserController
-from utils import Logger, normalize_date
+from utils import Logger, normalize_date, normalize_time
 from doc_parser import parse_google_doc_text
 
 CONFIG_FILE = 'config.json'
@@ -598,18 +598,21 @@ class DailyReporterApp:
                     
                 is_collision = False
                 if date in existing_entries:
-                    doc_start = entry['start_time']
-                    if len(doc_start) == 4:
-                        doc_start = f"{doc_start[:2]}:{doc_start[2:]}"
-                    
-                    for existing in existing_entries[date]:
-                        if existing['start'] == doc_start:
-                            self.logger.log(f"  ⊗ Skipping {date} [{doc_start}] (Time Collision)", 'warning')
-                            is_collision = True
-                            break
-                    
-                    if not is_collision:
-                        self.logger.log(f"  ✓ Gap found on {date} at {doc_start}", 'success')
+                    # Check for holiday/disabled day first
+                    if any(e['start'] == 'HOLIDAY' for e in existing_entries[date]):
+                        self.logger.log(f"  🔴 Skipping {date} (Hari Libur/Disabled)", 'warning')
+                        is_collision = True
+                    else:
+                        doc_start = normalize_time(entry['start_time'])
+                        
+                        for existing in existing_entries[date]:
+                            if existing['start'] == doc_start:
+                                self.logger.log(f"  ⊗ Skipping {date} [{doc_start}] (Time Collision)", 'warning')
+                                is_collision = True
+                                break
+                        
+                        if not is_collision:
+                            self.logger.log(f"  ✓ Gap found on {date} at {doc_start}", 'success')
                 
                 if is_collision:
                     continue

@@ -49,6 +49,14 @@ class CalendarScanner:
                 
                 # Check for events in this cell
                 cell = cells[i]
+                
+                # Holiday/disabled detection: red full-day block
+                cell_classes = cell.get_attribute('class') or ''
+                if 'vuecal__cell--disabled' in cell_classes:
+                    self.logger.log(f"  🔴 Libur/Disabled: {date_str}")
+                    existing_data[date_str] = [{'start': 'HOLIDAY', 'end': 'HOLIDAY'}]
+                    continue
+                
                 events = cell.locator(".vuecal__event").all()
                 
                 if not events:
