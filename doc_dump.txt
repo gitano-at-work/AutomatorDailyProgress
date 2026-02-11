@@ -29,6 +29,10 @@ Laporan EKinerja Harian
 10 Februari 2026
 0730 - 1100 : Pengecekan progress aplikasi Sengkuyung dan konfirmasi jadwal paparan 2
 1100 - 1600 : Pelanjutan pembuatan aplikasi 3
+11 Februari 2026
+0730 - 1200 : Mengisi acara dan diskusi Sengkuyung 5
+1200 - 1430 : Belajar perpajakan dan penggunaan coretax 1
+1430 - 1600 : Pengerjaan koreksi flow dan UI UX untuk Sengkuyung 4
 Aktifkan dukungan pembaca layar
 Untuk mengaktifkan dukungan pembaca layar, tekan Ctrl+Alt+Z. Untuk mempelajari pintasan keyboard, tekan Ctrl+garis miring.
 Banner disembunyikan 

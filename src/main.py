@@ -34,6 +34,8 @@ class DailyReporterApp:
         self.password_var = tk.StringVar(value=self.config.get('password', ''))
         self.auth_code_var = tk.StringVar()
         self.completion_mode = tk.IntVar(value=self.config.get('completion_mode', 2))
+        # 1 = Normal, 2 = Headless
+        self.browser_mode = tk.IntVar(value=2 if self.config.get('browser_headless', False) else 1)
 
         # Screen management
         self.current_screen = None
@@ -229,6 +231,53 @@ class DailyReporterApp:
                                       command=self.toggle_password, 
                                       relief='flat', bg='white', cursor='hand2')
         self.show_pwd_btn.pack(side='right', padx=(5, 0))
+
+        # Browser Mode (Normal / Headless)
+        browser_mode_frame = tk.Frame(config_inner, bg='white')
+        browser_mode_frame.pack(fill='x', padx=10, pady=(10, 10))
+        
+        # Header with Info Icon
+        bm_header = tk.Frame(browser_mode_frame, bg='white')
+        bm_header.pack(fill='x', pady=(0, 5))
+        
+        ttk.Label(bm_header, text="Mode Browser:", style='White.TLabel').pack(side='left')
+        
+        info_label = tk.Label(bm_header, text="ℹ️", bg='white', fg='#0066CC', cursor='hand2')
+        info_label.pack(side='left', padx=(5, 0))
+        
+        # Tooltip implementation
+        def show_tooltip(event):
+            # Calculate position relative to the icon using message event
+            x = event.x_root + 15
+            y = event.y_root + 10
+            
+            # Create a toplevel window
+            self.tooltip = tk.Toplevel(info_label)
+            self.tooltip.wm_overrideredirect(True)
+            self.tooltip.wm_geometry(f"+{x}+{y}")
+            
+            label = tk.Label(self.tooltip, text=(
+                "Normal: Browser terlihat di layar (Default)\n"
+                "Headless: Browser berjalan di belakang layar (Lebih cepat)"
+            ), justify='left', background="#ffffe0", relief='solid', borderwidth=1,
+            font=("Segoe UI", 8))
+            label.pack()
+
+        def hide_tooltip(event):
+            if hasattr(self, 'tooltip'):
+                self.tooltip.destroy()
+        
+        info_label.bind('<Enter>', show_tooltip)
+        info_label.bind('<Leave>', hide_tooltip)
+
+        # Radio Buttons
+        bm_options = tk.Frame(browser_mode_frame, bg='white')
+        bm_options.pack(fill='x')
+        
+        ttk.Radiobutton(bm_options, text="Normal", variable=self.browser_mode, value=1,
+                       style='White.TRadiobutton').pack(side='left', padx=(0, 15))
+        ttk.Radiobutton(bm_options, text="Headless", variable=self.browser_mode, value=2,
+                       style='White.TRadiobutton').pack(side='left')
 
         # --- RIGHT COLUMN: Options & Control ---
         options_frame = ttk.LabelFrame(right_col, text=" ⚙️ Opsi Sesi ", padding="15")
@@ -733,6 +782,7 @@ class DailyReporterApp:
         self.config['username'] = self.username_var.get()
         self.config['password'] = self.password_var.get()
         self.config['completion_mode'] = self.completion_mode.get()
+        self.config['browser_headless'] = (self.browser_mode.get() == 2)
         
         # Ensure other keys exist (handled by load_config defaults, but safe to keep)
         
@@ -748,6 +798,26 @@ class DailyReporterApp:
         if not self.doc_url_var.get():
             messagebox.showerror("Informasi Kurang", "Mohon masukkan Link Google Doc Anda")
             return
+
+        # Headless Safety Check
+        if self.browser_mode.get() == 2:
+            # Check if any critical field is missing
+            missing_fields = []
+            if not self.username_var.get().strip(): missing_fields.append("Username")
+            if not self.password_var.get().strip(): missing_fields.append("Password")
+            if not self.auth_code_var.get().strip(): missing_fields.append("Kode OTP")
+            
+            if missing_fields:
+                proceed = messagebox.askyesno(
+                    "Peringatan Mode Headless",
+                    "Anda memilih Mode Headless namun data berikut kosong:\n"
+                    f"• {', '.join(missing_fields)}\n\n"
+                    "Mode Headless tidak memungkinkan input manual saat browser berjalan.\n"
+                    "Proses kemungkinan besar akan gagal/stuck.\n\n"
+                    "Lanjutkan?"
+                )
+                if not proceed:
+                    return
 
         
         self.save_config()
@@ -868,7 +938,14 @@ class DailyReporterApp:
 
             if not entries_to_fill:
                 self.logger.log("✅ Tidak ada yang perlu diisi! Gunakan mode paksa jika diperlukan.", 'success')
-                self.finish_process(browser, keep_open=self.keep_browser_var.get())
+                mode = self.completion_mode.get()
+                is_headless = (self.browser_mode.get() == 2)
+                
+                if is_headless and mode == 1:
+                    self.logger.log("Mode Headless: Menutup browser otomatis.", 'info')
+                    
+                keep_open = (mode == 1 and not is_headless)
+                self.finish_process(browser, keep_open=keep_open, close_app=(mode==3))
                 return
 
             from form_filler import FormFiller
@@ -900,17 +977,23 @@ class DailyReporterApp:
             self.logger.log("🎉 Fase 2 Selesai.", 'success')
             
             mode = self.completion_mode.get()
-            if mode == 1:
+            is_headless = (self.browser_mode.get() == 2)
+            
+            # Logic: Always close browser if headless or if user Chose to close (mode != 1)
+            should_keep_browser = (mode == 1 and not is_headless)
+            should_close_app = (mode == 3)
+
+            if is_headless and mode == 1:
+                self.logger.log("Mode Headless: Mengabaikan opsi 'Biarkan browser terbuka'.", 'info')
+
+            if should_keep_browser:
                 self.logger.log("Browser dan aplikasi tetap terbuka.", 'info')
-                self.root.after(0, lambda: self.reset_ui())
-            elif mode == 3:
+            elif should_close_app:
                 self.logger.log("Menutup browser dan aplikasi...", 'info')
-                if browser:
-                    browser.close_browser()
-                self.root.after(0, lambda: self.root.destroy())
             else:
                 self.logger.log("Menutup browser...", 'info')
-                self.finish_process(browser, keep_open=False)
+
+            self.finish_process(browser, keep_open=should_keep_browser, close_app=should_close_app)
             
         except Exception as e:
             self.logger.log(f"❌ ERROR KRITIS: {str(e)}", 'error')
@@ -919,10 +1002,14 @@ class DailyReporterApp:
             # Don't close on error
             self.logger.log("Proses dijeda karena error.", 'warning')
 
-    def finish_process(self, browser, keep_open=False):
+    def finish_process(self, browser, keep_open=False, close_app=False):
         if browser and not keep_open:
             browser.close_browser()
-        self.root.after(0, lambda: self.reset_ui())
+            
+        if close_app:
+            self.root.after(0, lambda: self.root.destroy())
+        else:
+            self.root.after(0, lambda: self.reset_ui())
 
     def reset_ui(self):
         self.start_btn.config(state='normal', text="▶  Mulai Otomatisasi", bg="#28a745")
