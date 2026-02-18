@@ -7,7 +7,7 @@ import threading
 from browser_controller import BrowserController
 from utils import Logger, normalize_date, normalize_time
 from doc_parser import parse_google_doc_text
-from updater import get_current_version, check_for_update, download_update, apply_update
+from updater import get_current_version, check_for_update, download_update, apply_update, check_pending_update
 
 CONFIG_FILE = 'config.json'
 APP_VERSION = get_current_version()
@@ -644,8 +644,53 @@ class DailyReporterApp:
     # --- AUTO-UPDATE METHODS ---
     def _check_for_update_worker(self):
         """Background thread: check GitHub for updates."""
+        # First check if there's a leftover _update.exe from a postponed update
+        pending = check_pending_update()
+        if pending:
+            self.root.after(0, lambda: self._on_pending_update_found(pending))
+            return
+        
         result = check_for_update(APP_VERSION)
         self.root.after(0, lambda: self._on_update_check_complete(result))
+
+    def _on_pending_update_found(self, pending_path):
+        """Called when a previously downloaded update is found on startup."""
+        self.update_status_label.config(
+            text="📦 Pembaruan sebelumnya ditemukan.\n     Siap untuk diterapkan.",
+            fg='#e65100'
+        )
+        apply_btn = tk.Button(self.update_btn_frame,
+            text="⬇  Terapkan Pembaruan",
+            command=lambda: self._apply_pending(pending_path),
+            bg="#ff9800", fg="white",
+            font=("Segoe UI", 9, "bold"),
+            padx=15, pady=5, relief="flat", cursor="hand2")
+        apply_btn.pack(fill='x')
+        apply_btn.bind('<Enter>', lambda e: apply_btn.config(bg="#e68900"))
+        apply_btn.bind('<Leave>', lambda e: apply_btn.config(bg="#ff9800"))
+
+    def _apply_pending(self, pending_path):
+        """Apply a previously downloaded pending update."""
+        confirm = messagebox.askyesno(
+            "Pembaruan Siap",
+            "Pembaruan sebelumnya ditemukan.\n\n"
+            "Aplikasi perlu ditutup dan dibuka kembali\n"
+            "untuk menerapkan pembaruan.\n\n"
+            "Lanjutkan sekarang?"
+        )
+        if confirm:
+            success = apply_update(pending_path, self.root)
+            if not success:
+                messagebox.showwarning(
+                    "Mode Pengembangan",
+                    "Pembaruan otomatis hanya bekerja pada versi .exe.\n"
+                    "File pembaruan tersimpan di: " + pending_path
+                )
+        else:
+            self.update_status_label.config(
+                text="⏸️ Pembaruan ditunda lagi.",
+                fg='#f57c00'
+            )
 
     def _on_update_check_complete(self, result):
         """Called on main thread after update check finishes."""

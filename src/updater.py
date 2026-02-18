@@ -99,6 +99,33 @@ def check_for_update(current_version):
         return None
 
 
+def check_pending_update():
+    """
+    Check if a previously downloaded _update.exe exists (from a postponed update).
+    
+    Returns:
+        str: path to the pending update exe, or None if not found
+    """
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+    else:
+        exe_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    pending_path = os.path.join(exe_dir, '_update.exe')
+    if os.path.exists(pending_path):
+        # Basic validity check: file should be > 1MB (not a partial download)
+        try:
+            if os.path.getsize(pending_path) > 1_000_000:
+                return pending_path
+            else:
+                # Too small, likely corrupt — clean it up
+                os.remove(pending_path)
+        except Exception:
+            pass
+    
+    return None
+
+
 def download_update(download_url, progress_callback=None):
     """
     Download the update exe to a temp file next to the current exe.
@@ -124,7 +151,7 @@ def download_update(download_url, progress_callback=None):
             headers={'User-Agent': 'DailyReporter-AutoUpdater'}
         )
         
-        with urllib.request.urlopen(req, timeout=60) as response:
+        with urllib.request.urlopen(req, timeout=300) as response:
             total_size = int(response.headers.get('Content-Length', 0))
             downloaded = 0
             chunk_size = 64 * 1024  # 64KB chunks
@@ -158,7 +185,9 @@ def download_update(download_url, progress_callback=None):
 
 def apply_update(new_exe_path, root_window):
     """
-    Launch the updater batch script to swap the exe and restart.
+    Generate a temporary batch script to swap the exe and restart.
+    The batch script waits for this process to fully exit (PID-based)
+    before replacing the file, then restarts the updated app.
     
     Args:
         new_exe_path: path to the downloaded update exe
@@ -170,27 +199,62 @@ def apply_update(new_exe_path, root_window):
         # In dev mode, don't actually replace anything
         return False
     
-    # Find updater.bat — it should be next to the exe
     exe_dir = os.path.dirname(current_exe)
-    updater_bat = os.path.join(exe_dir, 'updater.bat')
+    current_pid = os.getpid()
     
-    if not os.path.exists(updater_bat):
-        return False
+    bat_path = os.path.join(exe_dir, '_updater_temp.bat')
+    
+    # Normalize paths to Windows backslashes
+    new_exe_win = new_exe_path.replace('/', '\\')
+    current_exe_win = current_exe.replace('/', '\\')
+    
+    # Build the batch script line by line, then join with CRLF.
+    # tasklist /FI "PID eq X" filters to only that exact PID.
+    # find /C counts matching lines — errorlevel 0 means process still alive.
+    lines = [
+        '@echo off',
+        ':wait_loop',
+        'tasklist /FI "PID eq {pid}" /NH 2>nul | find /C "{pid}" >nul'.format(pid=current_pid),
+        'if %errorlevel%==0 (',
+        '    timeout /t 1 /nobreak >nul',
+        '    goto wait_loop',
+        ')',
+        'timeout /t 2 /nobreak >nul',
+        'move /Y "{new}" "{cur}"'.format(new=new_exe_win, cur=current_exe_win),
+        'if errorlevel 1 (',
+        '    copy /Y "{new}" "{cur}" >nul'.format(new=new_exe_win, cur=current_exe_win),
+        '    del /F "{new}" >nul 2>&1'.format(new=new_exe_win),
+        ')',
+        'start "" "{cur}"'.format(cur=current_exe_win),
+        'del /F "%~f0" >nul 2>&1',
+    ]
+    bat_content = '\r\n'.join(lines) + '\r\n'
     
     try:
-        # Launch the batch script as a separate process
-        # Note: CREATE_NEW_CONSOLE and DETACHED_PROCESS are mutually exclusive on Windows
-        # Use CREATE_NO_WINDOW so the batch runs silently in the background
+        # Write in binary mode to preserve exact CRLF line endings
+        with open(bat_path, 'wb') as f:
+            f.write(bat_content.encode('utf-8'))
+        
+        # Launch the batch script as a detached process
         subprocess.Popen(
-            f'cmd /c "{updater_bat}" "{current_exe}" "{new_exe_path}"',
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            shell=False
+            ['cmd', '/c', bat_path],
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
         
-        # Close the app so the batch script can replace the exe
-        root_window.after(500, root_window.destroy)
+        # Force-close the app so the batch script can replace the exe
+        def _force_exit():
+            root_window.destroy()
+            sys.exit(0)
+        
+        root_window.after(500, _force_exit)
         return True
         
     except Exception as e:
         print(f"Update apply error: {e}")
+        # Clean up the bat file on failure
+        try:
+            if os.path.exists(bat_path):
+                os.remove(bat_path)
+        except Exception:
+            pass
         return False

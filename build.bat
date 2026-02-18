@@ -50,17 +50,12 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo 5. Copying updater.bat to dist folder...
-copy /Y updater.bat dist\updater.bat >nul
-
-echo.
 echo ==========================================
 echo    BUILD SUCCESSFUL!  (v%APP_VERSION%)
 echo ==========================================
 echo.
 echo Your executable is located in the 'dist' folder:
 echo   dist\DailyReporter.exe
-echo   dist\updater.bat
 echo.
 echo To release an update:
 echo   1. Create a GitHub Release with tag "v%APP_VERSION%"
