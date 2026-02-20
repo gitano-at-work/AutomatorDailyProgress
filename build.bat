@@ -1,6 +1,6 @@
 @echo off
 echo ==========================================
-echo    Daily Progress Reporter - Build Tool
+echo    Lha Saya Kerja Pak (LSKP) - Build Tool
 echo ==========================================
 
 echo 1. Installing/Updating Dependencies...

@@ -1,0 +1,32 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- A white circle background slightly opaque if needed, or just transparent -->
+  <circle cx="100" cy="100" r="95" fill="white" />
+  
+  <!-- Stylized BKN Logo Elements -->
+  <!-- Top pink dot -->
+  <circle cx="100" cy="35" r="8" fill="#D81B60" />
+  
+  <!-- Radial lines -->
+  <path d="M 100 50 L 100 130" stroke="#D81B60" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 80 55 L 45 35" stroke="#9E9E9E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 120 55 L 155 35" stroke="#9E9E9E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 70 75 L 35 75" stroke="#9E9E9E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 130 75 L 165 75" stroke="#9E9E9E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 75 95 L 40 115" stroke="#039BE5" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 125 95 L 160 115" stroke="#039BE5" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 85 110 L 65 140" stroke="#D81B60" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 115 110 L 135 140" stroke="#039BE5" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Center blue dot -->
+  <circle cx="100" cy="95" r="8" fill="#039BE5" />
+  
+  <!-- Bottom BKN Text -->
+  <text x="100" y="165" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#039BE5">BKN</text>
+
+  <!-- Automation Gear Icon on bottom right -->
+  <g transform="translate(150, 150)">
+    <circle cx="0" cy="0" r="22" fill="#4CAF50" />
+    <path d="M-6,-26 L6,-26 L8,-18 L16,-14 L22,-20 L30,-14 L24,-7 L26,2 L32,6 L28,16 L20,13 L14,20 L16,28 L4,28 L1,20 L-6,21 L-14,26 L-22,20 L-16,13 L-23,8 L-30,12 L-33,2 L-26,-3 L-24,-11 L-30,-18 L-22,-24 L-15,-18 Z" fill="#4CAF50"/>
+    <circle cx="0" cy="0" r="10" fill="white" />
+  </g>
+</svg>

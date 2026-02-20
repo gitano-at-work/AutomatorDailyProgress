@@ -1,5 +1,5 @@
 @echo off
-echo Starting Daily Progress Reporter...
+echo Starting Lha Saya Kerja Pak (LSKP)...
 
 REM Detect Python command
 set PYTHON_CMD=python

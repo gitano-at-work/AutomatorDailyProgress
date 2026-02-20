@@ -15,8 +15,8 @@ APP_VERSION = get_current_version()
 class DailyReporterApp:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Daily Progress Reporter v{APP_VERSION}")
-        self.root.geometry("750x780")
+        self.root.title(f"Lha Saya Kerja Pak (LSKP) v{APP_VERSION}")
+        self.root.geometry("750x920")
         self.root.resizable(False, False)
         
         # Set app icon (if exists)
@@ -61,8 +61,8 @@ class DailyReporterApp:
         style.theme_use('clam')
         
         # Custom colors
-        BG_COLOR = "#f5f5f5"
-        ACCENT_COLOR = "#0066CC"
+        BG_COLOR = "#f0f4f8"
+        ACCENT_COLOR = "#1E88E5"
         
         self.root.configure(bg=BG_COLOR)
         
@@ -77,18 +77,22 @@ class DailyReporterApp:
         )
         
         style.map('Accent.TButton',
-            background=[('active', '#0052A3')]
+            background=[('active', '#1565C0')]
         )
+        
+        style.configure('TFrame', background=BG_COLOR)
         
         style.configure('TLabel',
             background=BG_COLOR,
+            foreground='#333',
             font=('Segoe UI', 9)
         )
         
         style.configure('TLabelframe',
             background=BG_COLOR,
             borderwidth=1,
-            relief='solid'
+            relief='solid',
+            bordercolor='#ccc'
         )
         
         style.configure('TLabelframe.Label',
@@ -100,11 +104,13 @@ class DailyReporterApp:
         # White-background variants for widgets inside white cards
         style.configure('White.TLabel',
             background='white',
+            foreground='#333',
             font=('Segoe UI', 9)
         )
         
         style.configure('White.TRadiobutton',
             background='white',
+            foreground='#333',
             font=('Segoe UI', 9)
         )
         style.map('White.TRadiobutton',
@@ -133,7 +139,6 @@ class DailyReporterApp:
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Bantuan", menu=help_menu)
         help_menu.add_command(label="Panduan Pengguna", command=self.show_user_guide)
-        help_menu.add_command(label="Format Dokumen", command=self.show_doc_format)
         help_menu.add_separator()
         help_menu.add_command(label="Tentang", command=self.show_about)
 
@@ -143,42 +148,58 @@ class DailyReporterApp:
         main_frame = self.current_screen
         main_frame.pack(fill='both', expand=True)
 
-        # Header with icon/logo space
-        header_frame = tk.Frame(main_frame, bg="#f5f5f5")
-        header_frame.pack(fill='x', pady=(0, 20))
+        # --- TOP FACE SECTION ---
+        face_frame = tk.Frame(main_frame, bg="#1E88E5", relief="flat")
+        face_frame.pack(fill='x', pady=(0, 20), ipadx=10, ipady=15)
         
-        # Try to load logo
+        # Try to load SVG or fallback to PNG
         try:
             from PIL import Image, ImageTk
-            if os.path.exists('assets/logo_small.png'):
-                logo_img = Image.open('assets/logo_small.png')
-                logo_img = logo_img.resize((48, 48), Image.LANCZOS)
+            import os
+            
+            logo_photo = None
+            if os.path.exists('assets/bkn_logo.svg'):
+                from svglib.svglib import svg2rlg
+                from reportlab.graphics import renderPM
+                import tempfile
+                
+                drawing = svg2rlg('assets/bkn_logo.svg')
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                    renderPM.drawToFile(drawing, tmp.name, fmt="PNG")
+                    tmp_name = tmp.name
+                
+                logo_img = Image.open(tmp_name)
+                logo_img = logo_img.resize((80, 80), Image.LANCZOS)
                 logo_photo = ImageTk.PhotoImage(logo_img)
-                logo_label = tk.Label(header_frame, image=logo_photo, bg="#f5f5f5")
+                os.remove(tmp_name)
+            elif os.path.exists('assets/logo_small.png'):
+                logo_img = Image.open('assets/logo_small.png')
+                logo_img = logo_img.resize((80, 80), Image.LANCZOS)
+                logo_photo = ImageTk.PhotoImage(logo_img)
+            
+            if logo_photo:
+                logo_label = tk.Label(face_frame, image=logo_photo, bg="#1E88E5")
                 logo_label.image = logo_photo  # Keep reference
-                logo_label.pack(side='left', padx=(0, 15))
-        except Exception:
-            pass
+                logo_label.pack(pady=(10, 5))
+        except Exception as e:
+            print("Logo load error:", e)
         
-        title_frame = tk.Frame(header_frame, bg="#f5f5f5")
-        title_frame.pack(side='left', fill='both', expand=True)
+        header = tk.Label(face_frame, text="Lha Saya Kerja Pak (LSKP)", 
+                         font=("Segoe UI", 20, "bold"), fg="white", bg="#1E88E5")
+        header.pack(pady=(0, 5))
         
-        header = tk.Label(title_frame, text="Pelapor Kinerja Harian", 
-                         font=("Segoe UI", 18, "bold"), fg="#222", bg="#f5f5f5")
-        header.pack(anchor='w')
-        
-        subtitle = tk.Label(title_frame, text="Otomatisasi laporan kinerja Anda dalam hitungan detik", 
-                           font=("Segoe UI", 9), fg="#666", bg="#f5f5f5")
-        subtitle.pack(anchor='w')
+        subtitle = tk.Label(face_frame, text="Otomatisasi pengisian Sasaran Kinerja Pegawai (SKP) anda dalam hitungan detik", 
+                           font=("Segoe UI", 11), fg="#E3F2FD", bg="#1E88E5")
+        subtitle.pack(pady=(0, 10))
 
         # --- TWO COLUMN LAYOUT ---
-        content_frame = tk.Frame(main_frame, bg="#f5f5f5")
+        content_frame = tk.Frame(main_frame, bg="#f0f4f8")
         content_frame.pack(fill='both', expand=True)
         
-        left_col = tk.Frame(content_frame, bg="#f5f5f5")
+        left_col = tk.Frame(content_frame, bg="#f0f4f8")
         left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
         
-        right_col = tk.Frame(content_frame, bg="#f5f5f5")
+        right_col = tk.Frame(content_frame, bg="#f0f4f8")
         right_col.pack(side='right', fill='both', expand=True)
 
         # --- LEFT COLUMN: Configuration ---
@@ -202,7 +223,7 @@ class DailyReporterApp:
         helper.pack(anchor='w', pady=(2, 0))
         
         template_link = tk.Label(doc_frame, text="📥 Unduh Template Dokumen", 
-                                font=("Segoe UI", 8, "underline"), fg="#0066CC", bg='white', cursor="hand2")
+                                font=("Segoe UI", 8, "underline"), fg="#1E88E5", bg='white', cursor="hand2")
         template_link.pack(anchor='w', pady=(5, 0))
         template_link.bind("<Button-1>", lambda e: self.open_url("https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"))
 
@@ -242,7 +263,7 @@ class DailyReporterApp:
         
         ttk.Label(bm_header, text="Mode Browser:", style='White.TLabel').pack(side='left')
         
-        info_label = tk.Label(bm_header, text="ℹ️", bg='white', fg='#0066CC', cursor='hand2')
+        info_label = tk.Label(bm_header, text="ℹ️", bg='white', fg='#1E88E5', cursor='hand2')
         info_label.pack(side='left', padx=(5, 0))
         
         # Tooltip implementation
@@ -350,17 +371,17 @@ class DailyReporterApp:
         threading.Thread(target=self._check_for_update_worker, daemon=True).start()
 
         # --- ACTION BUTTON (centered, prominent) ---
-        btn_container = tk.Frame(main_frame, bg="#f5f5f5")
-        btn_container.pack(pady=20)
+        btn_container = tk.Frame(main_frame, bg="#f0f4f8")
+        btn_container.pack(pady=10)
         
         self.start_btn = tk.Button(btn_container, 
             text="▶  Mulai Otomatisasi", 
             command=self.start_automation,
             bg="#28a745", 
             fg="white", 
-            font=("Segoe UI", 12, "bold"),
-            padx=40, 
-            pady=12,
+            font=("Segoe UI", 14, "bold"),
+            padx=60, 
+            pady=16,
             relief="flat",
             cursor="hand2",
             borderwidth=0
@@ -414,37 +435,58 @@ class DailyReporterApp:
         if self.current_screen:
             self.current_screen.destroy()
         
-        self.root.geometry("600x650")
+        self.root.geometry("600x800")
         
         self.current_screen = ttk.Frame(self.root, padding="20 20 20 10")
         self.current_screen.pack(fill='both', expand=True)
         
-        # Header
-        header_frame = tk.Frame(self.current_screen, bg="#f5f5f5")
-        header_frame.pack(fill='x', pady=(0, 20))
+        # Apply the new global background to the inner frame wrapper 
+        # (ttk.Frame already inherits it, but we add a backing tk.Frame just in case)
+        main_bg = tk.Frame(self.current_screen, bg="#f0f4f8")
+        main_bg.pack(fill='both', expand=True)
+        
+        # Header Face
+        face_frame = tk.Frame(main_bg, bg="#1E88E5", relief="flat")
+        face_frame.pack(fill='x', pady=(0, 20), ipadx=10, ipady=15)
         
         try:
             from PIL import Image, ImageTk
-            if os.path.exists('assets/logo_small.png'):
-                logo_img = Image.open('assets/logo_small.png')
-                logo_img = logo_img.resize((48, 48), Image.LANCZOS)
+            import os
+            
+            logo_photo = None
+            if os.path.exists('assets/bkn_logo.svg'):
+                from svglib.svglib import svg2rlg
+                from reportlab.graphics import renderPM
+                import tempfile
+                
+                drawing = svg2rlg('assets/bkn_logo.svg')
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                    renderPM.drawToFile(drawing, tmp.name, fmt="PNG")
+                    tmp_name = tmp.name
+                
+                logo_img = Image.open(tmp_name)
+                logo_img = logo_img.resize((80, 80), Image.LANCZOS)
                 logo_photo = ImageTk.PhotoImage(logo_img)
-                logo_label = tk.Label(header_frame, image=logo_photo, bg="#f5f5f5")
+                os.remove(tmp_name)
+            elif os.path.exists('assets/logo_small.png'):
+                logo_img = Image.open('assets/logo_small.png')
+                logo_img = logo_img.resize((80, 80), Image.LANCZOS)
+                logo_photo = ImageTk.PhotoImage(logo_img)
+                
+            if logo_photo:
+                logo_label = tk.Label(face_frame, image=logo_photo, bg="#1E88E5")
                 logo_label.image = logo_photo
-                logo_label.pack(side='left', padx=(0, 15))
+                logo_label.pack(pady=(10, 5))
         except Exception:
             pass
         
-        title_frame = tk.Frame(header_frame, bg="#f5f5f5")
-        title_frame.pack(side='left', fill='both', expand=True)
-        
-        tk.Label(title_frame, text="Pelapor Kinerja Harian",
-                 font=("Segoe UI", 18, "bold"), fg="#222", bg="#f5f5f5").pack(anchor='w')
-        tk.Label(title_frame, text="Otomatisasi laporan kinerja harian eKinerja BKN",
-                 font=("Segoe UI", 9), fg="#666", bg="#f5f5f5").pack(anchor='w')
+        tk.Label(face_frame, text="Lha Saya Kerja Pak (LSKP)",
+                 font=("Segoe UI", 20, "bold"), fg="white", bg="#1E88E5").pack(pady=(0, 2))
+        tk.Label(face_frame, text="Otomatisasi laporan kinerja harian eKinerja BKN",
+                 font=("Segoe UI", 11), fg="#E3F2FD", bg="#1E88E5").pack(pady=(0, 10))
         
         # Description card
-        desc_frame = tk.Frame(self.current_screen, bg='white', relief='solid', borderwidth=1)
+        desc_frame = tk.Frame(main_bg, bg='white', relief='solid', borderwidth=1)
         desc_frame.pack(fill='x', pady=(0, 20))
         
         desc_text = (
@@ -459,7 +501,7 @@ class DailyReporterApp:
                  justify='left', padx=20, pady=20).pack(anchor='w')
         
         # Buttons
-        btn_frame = tk.Frame(self.current_screen, bg="#f5f5f5")
+        btn_frame = tk.Frame(main_bg, bg="#f0f4f8")
         btn_frame.pack(fill='x', pady=(0, 15))
         
         guide_btn = tk.Button(btn_frame,
@@ -467,12 +509,12 @@ class DailyReporterApp:
             command=lambda: self.open_url(
                 "https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing"
             ),
-            bg="#0066CC", fg="white",
+            bg="#1E88E5", fg="white",
             font=("Segoe UI", 11, "bold"),
             padx=20, pady=10, relief="flat", cursor="hand2")
         guide_btn.pack(fill='x', pady=(0, 8))
-        guide_btn.bind('<Enter>', lambda e: guide_btn.config(bg="#0052A3"))
-        guide_btn.bind('<Leave>', lambda e: guide_btn.config(bg="#0066CC"))
+        guide_btn.bind('<Enter>', lambda e: guide_btn.config(bg="#1565C0"))
+        guide_btn.bind('<Leave>', lambda e: guide_btn.config(bg="#1E88E5"))
         
         self.setup_install_btn = tk.Button(btn_frame,
             text="⬇  Install Browser (~400MB)",
@@ -485,7 +527,7 @@ class DailyReporterApp:
         self.setup_install_btn.bind('<Leave>', lambda e: self.setup_install_btn.config(bg="#ff9800"))
         
         # Log area
-        log_frame = ttk.LabelFrame(self.current_screen, text=" 📋 Log Aktivitas ", padding="10")
+        log_frame = ttk.LabelFrame(main_bg, text=" 📋 Log Aktivitas ", padding="10")
         log_frame.pack(fill='both', expand=True, pady=(10, 0))
         
         self.log_text = scrolledtext.ScrolledText(
@@ -508,7 +550,7 @@ class DailyReporterApp:
         if self.current_screen:
             self.current_screen.destroy()
         
-        self.root.geometry("750x780")
+        self.root.geometry("750x920")
         self.create_menu()
         self.create_widgets()
 
@@ -568,14 +610,14 @@ class DailyReporterApp:
 
     def create_status_bar(self):
         """Bottom status bar"""
-        status_frame = tk.Frame(self.root, bg='#e0e0e0', height=25)
+        status_frame = tk.Frame(self.root, bg='#1565C0', height=25)
         status_frame.pack(side='bottom', fill='x')
         
         self.status_label = tk.Label(status_frame, 
             text=f"Version {APP_VERSION}  |  Ready", 
-            bg='#e0e0e0', 
-            fg='#666',
-            font=('Segoe UI', 8),
+            bg='#1565C0', 
+            fg='white',
+            font=('Segoe UI', 8, 'bold'),
             anchor='w'
         )
         self.status_label.pack(side='left', padx=10)
@@ -608,33 +650,15 @@ class DailyReporterApp:
 
     def show_user_guide(self):
         """Open user guide"""
-        messagebox.showinfo("User Guide", "Coming soon!")
-
-    def show_doc_format(self):
-        """Show document format requirements"""
-        format_text = (
-            "Document Format Requirements:\n\n"
-            "[Date in Indonesian format]\n"
-            "[Empty line]\n"
-            "[Time Range] :\n"
-            "[Category/Activity Name]\n"
-            "[Description]\n"
-            "[Proof Link]\n\n"
-            "Example:\n"
-            "2 Februari 2026\n\n"
-            "0730 - 1300 :\n"
-            "Meeting dan Penyetaraan Desain\n"
-            "https://drive.google.com/..."
-        )
-        messagebox.showinfo("Document Format", format_text)
+        self.open_url("https://docs.google.com/document/d/1Hghqt2kR3D9P-S_AC38_nS5kDoNVhbWDWBA72m7rbFQ/edit?usp=sharing")
 
     def show_about(self):
         """Show about dialog"""
         dialog = tk.Toplevel(self.root)
         dialog.title("About")
         dialog.geometry("300x200")
-        tk.Label(dialog, text=f"Daily Progress Reporter v{APP_VERSION}", font=('Segoe UI', 12, 'bold')).pack(pady=20)
-        tk.Label(dialog, text="Created by Your Agent").pack()
+        tk.Label(dialog, text=f"Lha Saya Kerja Pak (LSKP) v{APP_VERSION}", font=('Segoe UI', 12, 'bold')).pack(pady=20)
+        tk.Label(dialog, text="Created by jak").pack()
         ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=20)
 
     def update_status(self, text):
