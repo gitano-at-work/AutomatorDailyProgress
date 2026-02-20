@@ -482,7 +482,7 @@ class DailyReporterApp:
         
         tk.Label(face_frame, text="Lha Saya Kerja Pak (LSKP)",
                  font=("Segoe UI", 20, "bold"), fg="white", bg="#1E88E5").pack(pady=(0, 2))
-        tk.Label(face_frame, text="Otomatisasi laporan kinerja harian eKinerja BKN",
+        tk.Label(face_frame, text="Otomatisasi pengisian Sasaran Kinerja Pegawai (SKP) anda dalam hitungan detik",
                  font=("Segoe UI", 11), fg="#E3F2FD", bg="#1E88E5").pack(pady=(0, 10))
         
         # Description card
