@@ -6,4 +6,5 @@ build/
 daily_reporter.log
 doc_dump.txt
 doc_dump_fail.txt
+calendar_dump.html
 browsers/
